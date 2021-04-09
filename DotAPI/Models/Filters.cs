@@ -2,6 +2,7 @@
 {
     public enum FilterFieldType
     {
+        Guid,
         String,
         Number,
         Decimal,

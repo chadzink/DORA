@@ -8,7 +8,7 @@ namespace DORA.DotAPI.Context
 {
     public class AccessContext : DbContext
     {
-        public AccessContext(DbContextOptions options)
+        public AccessContext(DbContextOptions<AccessContext> options)
             : base(options)
         {
         }
@@ -62,29 +62,13 @@ namespace DORA.DotAPI.Context
 
         internal static AccessContext CreateContext()
         {
-            IConfigurationRoot configuration = AccessContext.AppConfigFromFile();
 
-            DbContextOptionsBuilder dbContextBuilder = new DbContextOptionsBuilder<AccessContext>();
-            string connectionString = configuration.GetConnectionString("AccessConnection");
-
-            string targetAssembly = "DotAPI";
-            if (configuration["Migrations:AccessTargetMigrationsAssembly"] != null)
-                targetAssembly = configuration.GetValue<string>("Migrations:AccessTargetMigrationsAssembly");
-
-            dbContextBuilder.UseSqlServer(
-                connectionString,
-                a => a.MigrationsAssembly(targetAssembly)
-            );
-
-            return new AccessContext(dbContextBuilder.Options);
-        }
-
-        internal static IConfigurationRoot AppConfigFromFile()
-        {
-            return new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json")
-                .Build();
+            // Get DbContext from DI system
+            var resolver = new DependencyResolver
+            {
+                CurrentDirectory = Directory.GetCurrentDirectory()
+            };
+            return resolver.ServiceProvider.GetService(typeof(AccessContext)) as AccessContext;
         }
 
         public IConfiguration Configuration { get; }

@@ -3,6 +3,8 @@ using System.Linq;
 using System.Linq.Expressions;
 using DORA.DotAPI.Context.Entities;
 using Microsoft.Extensions.Configuration;
+using DORA.DotAPI.Common;
+using DORA.DotAPI.Helpers;
 
 namespace DORA.DotAPI.Context.Repositories
 {
@@ -16,7 +18,7 @@ namespace DORA.DotAPI.Context.Repositories
         //private ClaimsPrincipal _currentUser { get; set; }
 
         public UserRepository(AccessContext context, IConfiguration configuration)
-            : base(context, context, configuration)
+            : base(context, configuration)
         {
         }
 
@@ -38,8 +40,17 @@ namespace DORA.DotAPI.Context.Repositories
         {
             User safeUser = this.FindAll().Where(u => u.Id == user.Id.Value).FirstOrDefault();
 
-            // TO DO: add check if the new password matches an old password and determine if it is allowed, may need config setting
-            
+            // check if user password already exist historically fo rthe user
+            int hasOldPassword = (from up in dbContext.UserPasswords
+                                    where
+                                        up.Password == password.Password
+                                        && up.UserId == user.Id.Value
+                                        && up.CreatedStamp <= DateTime.Now.AddDays(90)
+                                    select up).Count();
+
+            if (hasOldPassword > 0)
+                return false;
+
             if (safeUser != null && password != null)
             {
                 if (user.CurrentUserPasswordId == password.Id) {
@@ -115,15 +126,9 @@ namespace DORA.DotAPI.Context.Repositories
             current.FirstLoginStamp = entity.FirstLoginStamp;
             current.LastLoginStamp = entity.LastLoginStamp;
             current.ExternalId = entity.ExternalId;
-            
-            if (currentUser != null)
-            {
-                if (currentUser.Id == current.Id)
-                {
-                    // TO DO: Upade user password with new hashed value
-                    //current.UserPassword = HASHED PASSWORD GENERATOR(entity.UserPassword);
-                }
-            }
+
+            // cannot set the user password in common create, need to use special AssignUserPassword above
+
             current.enabled = entity.enabled;
             current.LastUpdatedStamp = DateTime.Now;
 

@@ -38,6 +38,18 @@ namespace DORA.DotAPI.Models.Controllers.Auth
         public string password { get; set; }
     }
 
+    public class AuthChangeModel
+    {
+        [Required]
+        public string username { get; set; }
+
+        [Required]
+        public string oldPassword { get; set; }
+
+        [Required]
+        public string newPassword { get; set; }
+    }
+
     public class TokenApiModel
     {
         [Required]

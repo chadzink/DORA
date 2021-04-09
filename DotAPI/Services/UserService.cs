@@ -16,6 +16,7 @@ namespace DORA.DotAPI.Services
     {
         User Authenticate(string username, string password);
         User NewUser(string username, string password, string email, string firstname = null, string lastname = null, string phonenumber = null);
+        User ChangePassword(string username, string oldPassword, string newPassword);
 
         User UserWithToken(User user);
         JwtRefreshToken MakeRefreshToken(string username);
@@ -116,6 +117,33 @@ namespace DORA.DotAPI.Services
             }
 
             return null;
+        }
+
+        public User ChangePassword(string username, string oldPassword, string newPassword)
+        {
+            User userWithToken = this.Authenticate(username, oldPassword);
+
+            if (userWithToken == null)
+                return null;
+
+            // we know the user passed authentication with old password
+
+            PasswordHasher passwordHasher = new PasswordHasher();
+
+            UserPassword newUserPassword = new UserPassword
+            {
+                Id = Guid.NewGuid(),
+                UserId = userWithToken.Id.Value,
+                Password = passwordHasher.HashPassword(newPassword),
+                CreatedStamp = DateTime.Now
+            };
+
+            bool assignedNewPassword = _dataRepository.AssignUserPassword(userWithToken, newUserPassword);
+
+            if (!assignedNewPassword)
+                return null;
+
+            return this.UserWithToken(userWithToken);
         }
 
         public JwtRefreshToken MakeRefreshToken(string username)

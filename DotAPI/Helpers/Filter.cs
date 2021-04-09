@@ -161,6 +161,12 @@ namespace DORA.DotAPI.Helpers
                         target = Expression.Constant((String)this.FieldValue);
                         inputType = typeof(String);
                         break;
+
+                    case FilterFieldType.Guid:
+
+                        target = Expression.Constant(Guid.Parse((String)this.FieldValue));
+                        inputType = typeof(Guid);
+                        break;
                 }
                 //---------------//
 
@@ -281,11 +287,15 @@ namespace DORA.DotAPI.Helpers
                     }
                     else if (prop.PropertyType == typeof(string)
                         || prop.PropertyType == typeof(String)
-                        || prop.PropertyType == typeof(Guid)
-                        || prop.PropertyType == typeof(Guid?)
                     )
                     {
                         return FilterFieldType.String;
+                    }
+                    else if (prop.PropertyType == typeof(Guid)
+                        || prop.PropertyType == typeof(Guid?)
+                    )
+                    {
+                        return FilterFieldType.Guid;
                     }
                 }
             }

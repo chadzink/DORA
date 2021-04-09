@@ -113,15 +113,14 @@ namespace DotAPI.Controllers
         ///     Authenticates the user and generates a token and refresh token if valid.
         /// </remarks>
         /// <param name="model">Auth Model, must contain the information needed to login. Username and Password</param>
-        /// <param name="client_id">(optional) String that matches the JwtClient Id in the database.</param>
-        /// <response code="200">JSON object with user with updated JWT and refresh tokens. When client_id not specified or not matched.</response>
+        /// <response code="200">JSON object with user with updated JWT and refresh tokens.</response>
         /// <response code="308">Redirect to Save Token URL in JWT Client Record with token and refreshToken querystring params.</response>
         /// <response code="400">JSON object with success = false and message containing error type.</response>
         [AllowAnonymous, HttpPost("login")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status308PermanentRedirect)]
-        public IActionResult ApiLogin([FromBody] AuthModel model, [FromQuery] string client_id)
+        public IActionResult ApiLogin([FromBody] AuthModel model)
         {
             User user = _userService.Authenticate(model.username, model.password);
 
@@ -135,7 +134,44 @@ namespace DotAPI.Controllers
             return Ok(JsonObj.Serialize());
         }
 
-        // change password route
+        /// <summary>
+        ///     Primary Change Password Route
+        /// </summary>
+        /// <remarks>
+        ///     Allows the currently logged in user to change the user password to a new value
+        /// </remarks>
+        /// <param name="model">Auth Change Model, must contain username, old password, and new password</param>
+        /// <response code="200">JSON object with user with updated JWT and refresh tokens.</response>
+        /// <response code="308">Redirect to Save Token URL in JWT Client Record with token and refreshToken querystring params.</response>
+        /// <response code="400">JSON object with success = false and message containing error type.</response>
+        [AllowAnonymous, HttpPost("change-password")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status308PermanentRedirect)]
+        public IActionResult ApiChangePassword([FromBody] AuthChangeModel model)
+        {
+            // only the current user can change their own password
+            _userRepository.SetUser(this.User);
+            User curUser = _userRepository.CurrentUser();
+
+            if (curUser.UserName != model.username)
+            {
+                JsonDataError JsonErr = new JsonDataError(string.Format("Must be logged in as {0} to change password.", model.username));
+                return BadRequest(JsonErr.Serialize());
+            }
+
+            User user = _userService.ChangePassword(model.username, model.oldPassword, model.newPassword);
+
+            if (user == null)
+            {
+                JsonDataError JsonErr = new JsonDataError("Unable to assign new password to user");
+                return BadRequest(JsonErr.Serialize());
+            }
+
+            JsonData<User> JsonObj = new JsonData<User>(user, user.JwtToken, user.RefreshJwtToken, true, "Logged In");
+            return Ok(JsonObj.Serialize());
+        }
+
         // request password reset route
         // resolve reset password route
 

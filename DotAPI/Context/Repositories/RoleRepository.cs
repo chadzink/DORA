@@ -3,12 +3,13 @@ using System.Linq;
 using System.Linq.Expressions;
 using DORA.DotAPI.Context.Entities;
 using Microsoft.Extensions.Configuration;
+using DORA.DotAPI.Common;
 
 namespace DORA.DotAPI.Context.Repositories
 {
     public class RoleRepository : Repository<AccessContext, Role>
     {
-        public RoleRepository(AccessContext context, IConfiguration configuration) : base(context, context, configuration)
+        public RoleRepository(AccessContext context, IConfiguration configuration) : base(context, configuration)
         {
         }
 

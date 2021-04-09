@@ -6,8 +6,9 @@ using System.Security.Claims;
 using DORA.DotAPI.Context.Entities;
 using DORA.DotAPI.Helpers;
 using Microsoft.Extensions.Configuration;
+using DORA.DotAPI.Context;
 
-namespace DORA.DotAPI.Context.Repositories
+namespace DORA.DotAPI.Common
 {
     public interface IViewRepository<TEntity>
     {
@@ -63,10 +64,12 @@ namespace DORA.DotAPI.Context.Repositories
         private readonly IConfiguration _configuration;
         private ClaimsPrincipal _user;
 
-        public _Repository(TContext context, AccessContext userContext, IConfiguration configuration)
+        public _Repository(TContext context, IConfiguration configuration)
         {
             this._dbContext = context;
-            this._userContext = userContext;
+
+            this._userContext = AccessContext.CreateContext();
+
             this._configuration = configuration;
         }
 
@@ -184,16 +187,16 @@ namespace DORA.DotAPI.Context.Repositories
 
     public abstract class RepositoryView<TContext, TEntity> : _Repository<TContext, TEntity>, IRepositoryView<TEntity>
     {
-        public RepositoryView(TContext context, AccessContext userContext, IConfiguration configuration)
-            : base(context, userContext, configuration)
+        public RepositoryView(TContext context, IConfiguration configuration)
+            : base(context, configuration)
         { }
     }
 
 
     public abstract class Repository<TContext, TEntity> : _Repository<TContext, TEntity>, IRepository<TEntity>
     {
-        public Repository(TContext context, AccessContext userContext, IConfiguration configuration)
-            : base(context, userContext, configuration)
+        public Repository(TContext context, IConfiguration configuration)
+            : base(context, configuration)
         { }
 
         public abstract TEntity Create(TEntity entity);

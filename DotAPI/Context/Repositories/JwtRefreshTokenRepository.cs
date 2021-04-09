@@ -3,13 +3,14 @@ using System.Linq;
 using System.Linq.Expressions;
 using DORA.DotAPI.Context.Entities;
 using Microsoft.Extensions.Configuration;
+using DORA.DotAPI.Common;
 
 namespace DORA.DotAPI.Context.Repositories
 {
     public class JwtRefreshTokenRepository : Repository<AccessContext, JwtRefreshToken>
     {
         public JwtRefreshTokenRepository(AccessContext context, IConfiguration configuration)
-            : base(context, context, configuration)
+            : base(context, configuration)
         {
         }
 

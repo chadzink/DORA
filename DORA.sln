@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.809.4
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotAPI", "DotAPI\DotAPI.csproj", "{4315ADCB-4824-4DB5-808F-F0E0FA77147F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notify", "Notify\Notify.csproj", "{F93AB38B-49F4-465A-B7BA-58868FFA6494}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{4315ADCB-4824-4DB5-808F-F0E0FA77147F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4315ADCB-4824-4DB5-808F-F0E0FA77147F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4315ADCB-4824-4DB5-808F-F0E0FA77147F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F93AB38B-49F4-465A-B7BA-58868FFA6494}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F93AB38B-49F4-465A-B7BA-58868FFA6494}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F93AB38B-49F4-465A-B7BA-58868FFA6494}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F93AB38B-49F4-465A-B7BA-58868FFA6494}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

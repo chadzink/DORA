@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DotAPI.Migrations
 {
     [DbContext(typeof(AccessContext))]
-    [Migration("20210407211136_InitalSeedData")]
-    partial class InitalSeedData
+    [Migration("20210410150627_CreateAccessModels")]
+    partial class CreateAccessModels
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -210,8 +210,8 @@ namespace DotAPI.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("phone");
 
-                    b.Property<bool>("RequestedPasswordReset")
-                        .HasColumnType("bit")
+                    b.Property<DateTime?>("RequestedPasswordReset")
+                        .HasColumnType("datetime2")
                         .HasColumnName("requested_password_reset");
 
                     b.Property<string>("UserName")

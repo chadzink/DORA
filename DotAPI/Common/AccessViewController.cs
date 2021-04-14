@@ -7,11 +7,13 @@ using DORA.DotAPI.Helpers;
 using System;
 using System.Security.Claims;
 using DORA.DotAPI.Context.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace DORA.DotAPI.Common
 {
     public class AccessViewController<TEntityRepository, TContext, TEntity, TUser> : ControllerBase
         where TEntityRepository : Repository<TContext, TEntity>
+        where TContext : DbContext
     {
         private readonly TEntityRepository _dataRepository;
         private readonly string _resourceCode = null;

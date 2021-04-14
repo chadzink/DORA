@@ -2,9 +2,19 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
+    <PackOnBuild>true</PackOnBuild>
+    <PackageId>DORA.Notify</PackageId>
+    <Authors>Chad Zink</Authors>
+    <Description>Utility library for sending notifications</Description>
+    <PackageVersion>1.0.5</PackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="NETCore.MailKit" Version="2.0.3" />
+    <PackageReference Include="NuGet.Build.Packaging" Version="0.2.5-dev.8">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="5.0.0" />
   </ItemGroup>
 </Project>

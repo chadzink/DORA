@@ -2,14 +2,15 @@
 using System.Linq;
 using System.Linq.Expressions;
 using DORA.DotAPI.Context.Entities;
-using Microsoft.Extensions.Configuration;
 using DORA.DotAPI.Common;
+using Microsoft.Extensions.Configuration;
 
 namespace DORA.DotAPI.Context.Repositories
 {
     public class RoleRepository : Repository<AccessContext, Role>
     {
-        public RoleRepository(AccessContext context, IConfiguration configuration) : base(context, configuration)
+        public RoleRepository(AccessContext context, IConfiguration config)
+            : base(context, config)
         {
         }
 
@@ -80,20 +81,36 @@ namespace DORA.DotAPI.Context.Repositories
             return entity;
         }
 
-        public override Role Update(Role current, Role entity)
+        public override Role Update(Role current, Role previous)
         {
-            bool hasAccess = (from s in this.FindAll()
-                              where s.Id == entity.Id
-                              select s).FirstOrDefault() != null;
+            bool hasAccess = (from s in this.FindAll() where s.Id == previous.Id select s).FirstOrDefault() != null;
 
             if (hasAccess)
             {
-                current.Label = entity.Label;
-                current.NameCanonical = entity.NameCanonical;
+                current.Label = previous.Label;
+                current.NameCanonical = previous.NameCanonical;
                 dbContext.SaveChanges();
             }
 
             return current;
+        }
+
+        public override Role SaveChanges(Role entity)
+        {
+            if (entity.Id.HasValue)
+            {
+                bool hasAccess = (from s in this.FindAll() where s.Id == entity.Id select s).FirstOrDefault() != null;
+
+                if (hasAccess)
+                {
+                    dbContext.Roles.Attach(entity);
+                    dbContext.SaveChanges();
+
+                    return entity;
+                }
+            }
+
+            return null;
         }
 
         public override Role Delete(Role entity)

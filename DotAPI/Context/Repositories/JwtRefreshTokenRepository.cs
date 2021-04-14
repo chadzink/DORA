@@ -2,15 +2,15 @@
 using System.Linq;
 using System.Linq.Expressions;
 using DORA.DotAPI.Context.Entities;
-using Microsoft.Extensions.Configuration;
 using DORA.DotAPI.Common;
+using Microsoft.Extensions.Configuration;
 
 namespace DORA.DotAPI.Context.Repositories
 {
     public class JwtRefreshTokenRepository : Repository<AccessContext, JwtRefreshToken>
     {
-        public JwtRefreshTokenRepository(AccessContext context, IConfiguration configuration)
-            : base(context, configuration)
+        public JwtRefreshTokenRepository(AccessContext context, IConfiguration config)
+            : base(context, config)
         {
         }
 
@@ -48,15 +48,23 @@ namespace DORA.DotAPI.Context.Repositories
             return entity;
         }
 
-        public override JwtRefreshToken Update(JwtRefreshToken current, JwtRefreshToken entity)
+        public override JwtRefreshToken Update(JwtRefreshToken current, JwtRefreshToken previous)
         {
-            current.RefreshToken = entity.RefreshToken;
-            current.UserName = entity.UserName;
-            current.ValidUntil = entity.ValidUntil;
+            current.RefreshToken = previous.RefreshToken;
+            current.UserName = previous.UserName;
+            current.ValidUntil = previous.ValidUntil;
 
             dbContext.SaveChanges();
 
             return current;
+        }
+
+        public override JwtRefreshToken SaveChanges(JwtRefreshToken entity)
+        {
+            dbContext.JwtRefreshTokens.Attach(entity);
+            dbContext.SaveChanges();
+
+            return entity;
         }
 
         public override JwtRefreshToken Delete(JwtRefreshToken entity)

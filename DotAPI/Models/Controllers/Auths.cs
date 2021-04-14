@@ -50,8 +50,20 @@ namespace DORA.DotAPI.Models.Controllers.Auth
         public string newPassword { get; set; }
     }
 
+    public class AuthResetResolveModel
+    {
+        [Required]
+        public string newPassword { get; set; }
+
+        [Required]
+        public string retypeNewPassword { get; set; }
+    }
+
     public class TokenApiModel
     {
+        [Required]
+        public string username { get; set; }
+
         [Required]
         public string AccessToken { get; set; }
 

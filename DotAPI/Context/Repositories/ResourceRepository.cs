@@ -2,14 +2,14 @@
 using System.Linq;
 using System.Linq.Expressions;
 using DORA.DotAPI.Context.Entities;
-using Microsoft.Extensions.Configuration;
 using DORA.DotAPI.Common;
+using Microsoft.Extensions.Configuration;
 
 namespace DORA.DotAPI.Context.Repositories
 {
     public class ResourceRepository : Repository<AccessContext, Resource>
     {
-        private string[] DEFAULT_RESOURCE_ACCESS_KEYCODES = new string[] {
+        public string[] DEFAULT_RESOURCE_ACCESS_KEYCODES = new string[] {
             "CREATE",
             "READ",
             "UPDATE",
@@ -18,8 +18,8 @@ namespace DORA.DotAPI.Context.Repositories
 
         private string ADMIN_ROLE_NAME_CANONICAL = "ADMIN";
 
-        public ResourceRepository(AccessContext context, IConfiguration configuration)
-            : base(context, configuration)
+        public ResourceRepository(AccessContext context, IConfiguration config)
+            : base(context, config)
         {
         }
 
@@ -86,13 +86,64 @@ namespace DORA.DotAPI.Context.Repositories
             return entity;
         }
 
-        public override Resource Update(Resource current, Resource entity)
+        public bool AddResourceToRoleNames(
+            Resource entity,
+            string[] RoleNamesCanonical,
+            string[] WithAccessKeys
+        )
         {
-            current.KeyCode = entity.KeyCode;
+            IQueryable<ResourceAccess> accessResources = dbContext.ResourceAccesses
+                .Where(r => WithAccessKeys.Contains(r.KeyCode));
 
-            dbContext.SaveChanges();
+            foreach(ResourceAccess resourceAccess in accessResources)
+            {
+                IQueryable<Role> addRoles = dbContext.Roles
+                    .Where(r => RoleNamesCanonical.Contains(r.NameCanonical));
+
+                foreach(Role role in addRoles)
+                {
+                    RoleResourceAccess newRRA = new RoleResourceAccess() {
+                        Id = Guid.NewGuid(),
+                        RoleId = role.Id.Value,
+                        ResourceId = entity.Id.Value,
+                        ResourceAccessId = resourceAccess.Id.Value,
+                    };
+
+                    dbContext.RoleResourcesAccesses.Add(newRRA);
+                }
+            }
+            return true;
+        }
+
+        public override Resource Update(Resource current, Resource previous)
+        {
+            bool hasAccess = (from s in this.FindAll() where s.Id == previous.Id select s).FirstOrDefault() != null;
+
+            if (hasAccess)
+            {
+                current.KeyCode = previous.KeyCode;
+                dbContext.SaveChanges();
+            }
 
             return current;
+        }
+
+        public override Resource SaveChanges(Resource entity)
+        {
+            if (entity.Id.HasValue)
+            {
+                bool hasAccess = (from s in this.FindAll() where s.Id == entity.Id select s).FirstOrDefault() != null;
+
+                if (hasAccess)
+                {
+                    dbContext.Resources.Attach(entity);
+                    dbContext.SaveChanges();
+
+                    return entity;
+                }
+            }
+
+            return null;
         }
 
         public override Resource Delete(Resource entity)

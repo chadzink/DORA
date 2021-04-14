@@ -2,15 +2,15 @@
 using System.Linq;
 using System.Linq.Expressions;
 using DORA.DotAPI.Context.Entities;
-using Microsoft.Extensions.Configuration;
 using DORA.DotAPI.Common;
+using Microsoft.Extensions.Configuration;
 
 namespace DORA.DotAPI.Context.Repositories
 {
     public class ResourceAccessRepository : Repository<AccessContext, ResourceAccess>
     {
-        public ResourceAccessRepository(AccessContext context, IConfiguration configuration)
-            : base(context, configuration)
+        public ResourceAccessRepository(AccessContext context, IConfiguration config)
+            : base(context, config)
         {
         }
 
@@ -49,14 +49,37 @@ namespace DORA.DotAPI.Context.Repositories
             return entity;
         }
 
-        public override ResourceAccess Update(ResourceAccess current, ResourceAccess entity)
+        public override ResourceAccess Update(ResourceAccess current, ResourceAccess previous)
         {
-            current.ResourceId = entity.ResourceId;
-            current.KeyCode = entity.KeyCode;
+            bool hasAccess = (from s in this.FindAll() where s.Id == previous.Id select s).FirstOrDefault() != null;
 
-            dbContext.SaveChanges();
+            if (hasAccess)
+            {
+                current.ResourceId = previous.ResourceId;
+                current.KeyCode = previous.KeyCode;
+
+                dbContext.SaveChanges();
+            }
 
             return current;
+        }
+
+        public override ResourceAccess SaveChanges(ResourceAccess entity)
+        {
+            if (entity.Id.HasValue)
+            {
+                bool hasAccess = (from s in this.FindAll() where s.Id == entity.Id select s).FirstOrDefault() != null;
+
+                if (hasAccess)
+                {
+                    dbContext.ResourceAccesses.Attach(entity);
+                    dbContext.SaveChanges();
+
+                    return entity;
+                }
+            }
+
+            return null;
         }
 
         public override ResourceAccess Delete(ResourceAccess entity)

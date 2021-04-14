@@ -7,6 +7,8 @@ using DORA.DotAPI.Context.Entities;
 using DORA.DotAPI.Helpers;
 using Microsoft.Extensions.Configuration;
 using DORA.DotAPI.Context;
+using Microsoft.EntityFrameworkCore;
+using DORA.DotAPI.Services;
 
 namespace DORA.DotAPI.Common
 {
@@ -26,6 +28,8 @@ namespace DORA.DotAPI.Common
         TEntity Create(TEntity entity);
 
         TEntity Update(TEntity dbEntity, TEntity entity);
+
+        TEntity SaveChanges(TEntity dbEntity);
 
         TEntity Delete(TEntity entity);
     }
@@ -58,19 +62,19 @@ namespace DORA.DotAPI.Common
     }
 
     public abstract class _Repository<TContext, TEntity> : IRepositoryView<TEntity>
+        where TContext : DbContext
     {
         private readonly TContext _dbContext;
         private readonly AccessContext _userContext;
-        private readonly IConfiguration _configuration;
+        private IConfiguration _configuration;
         private ClaimsPrincipal _user;
 
-        public _Repository(TContext context, IConfiguration configuration)
+        public _Repository(TContext context, IConfiguration config)
         {
             this._dbContext = context;
+            this._configuration = config;
 
             this._userContext = AccessContext.CreateContext();
-
-            this._configuration = configuration;
         }
 
         public TContext dbContext
@@ -130,18 +134,18 @@ namespace DORA.DotAPI.Common
             {
                 Guid userGuid = new Guid(UserIdStr);
 
-                if (_configuration["AppSettings:JwtIssuer"] != null
-                    && _configuration["AppSettings:JwtExpiresMinutes"] != null
-                    && _configuration["AppSettings:JwtRefreshExpiresDays"] != null
+                if (Config["AppSettings:JwtIssuer"] != null
+                    && Config["AppSettings:JwtExpiresMinutes"] != null
+                    && Config["AppSettings:JwtRefreshExpiresDays"] != null
                 )
                 {
                     user = JwtToken.AddTokensToUser(
                         _userContext.Users.Where(e => e.Id == userGuid).FirstOrDefault(),
-                        _configuration["AppSettings:Secret"],
-                        _configuration["AppSettings:JwtIssuer"],
-                        _configuration["AppSettings:JwtAudience"],
-                        int.Parse(_configuration["AppSettings:JwtExpiresMinutes"]),
-                        int.Parse(_configuration["AppSettings:JwtRefreshExpiresDays"]),
+                        Config["AppSettings:Secret"],
+                        Config["AppSettings:JwtIssuer"],
+                        Config["AppSettings:JwtAudience"],
+                        int.Parse(Config["AppSettings:JwtExpiresMinutes"]),
+                        int.Parse(Config["AppSettings:JwtRefreshExpiresDays"]),
                         _userContext
                     );
                 }
@@ -186,22 +190,26 @@ namespace DORA.DotAPI.Common
 
 
     public abstract class RepositoryView<TContext, TEntity> : _Repository<TContext, TEntity>, IRepositoryView<TEntity>
+        where TContext : DbContext
     {
-        public RepositoryView(TContext context, IConfiguration configuration)
-            : base(context, configuration)
+        public RepositoryView(TContext context, IConfiguration config)
+            : base(context, config)
         { }
     }
 
 
     public abstract class Repository<TContext, TEntity> : _Repository<TContext, TEntity>, IRepository<TEntity>
+        where TContext : DbContext
     {
-        public Repository(TContext context, IConfiguration configuration)
-            : base(context, configuration)
+        public Repository(TContext context, IConfiguration config)
+            : base(context, config)
         { }
 
         public abstract TEntity Create(TEntity entity);
 
         public abstract TEntity Update(TEntity dbEntity, TEntity entity);
+
+        public abstract TEntity SaveChanges(TEntity dbEntity);
 
         public abstract TEntity Delete(TEntity entity);
 
@@ -225,8 +233,6 @@ namespace DORA.DotAPI.Common
 
             return false;
         }
-
-
 
         public bool UpdateAccess(string resourceCode, IEnumerable<Claim> roleClaims)
         {

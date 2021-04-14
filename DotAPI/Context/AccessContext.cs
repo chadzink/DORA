@@ -1,8 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
-using DORA.DotAPI.Context.Entities;
+﻿using System.IO;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using DORA.DotAPI.Context.Entities;
+using DORA.DotAPI.Context.Repositories;
 using DORA.DotAPI.Helpers;
-using System.IO;
+using DORA.DotAPI.Services;
 
 namespace DORA.DotAPI.Context
 {
@@ -62,13 +64,50 @@ namespace DORA.DotAPI.Context
 
         internal static AccessContext CreateContext()
         {
-
             // Get DbContext from DI system
             var resolver = new DependencyResolver
             {
                 CurrentDirectory = Directory.GetCurrentDirectory()
             };
             return resolver.ServiceProvider.GetService(typeof(AccessContext)) as AccessContext;
+        }
+
+        public static IConfiguration GetConfiguration()
+        {
+            // Get IConfiguration from DI system
+            var resolver = new DependencyResolver {
+                CurrentDirectory = Directory.GetCurrentDirectory()
+            };
+
+            IConfigurationService configService = resolver.ServiceProvider
+                .GetService(typeof(IConfigurationService)) as IConfigurationService;
+            
+            return configService.GetConfiguration();
+        }
+
+        public static bool AddAccessResource(
+            IConfiguration config,
+            string keyCode,
+            string[] RoleNamesCanonical = null,
+            string[] WithAccessKeys = null
+        )
+        {
+            ResourceRepository resourceRepo = new ResourceRepository(
+                AccessContext.CreateContext(),
+                config
+            );
+            
+            // this will add the resource and assign to admin role
+            Resource newResource = resourceRepo.Create(new Resource { KeyCode = keyCode });
+
+            if (RoleNamesCanonical == null)
+                return true;
+
+            return resourceRepo.AddResourceToRoleNames(
+                newResource,
+                RoleNamesCanonical,
+                WithAccessKeys != null ? WithAccessKeys : resourceRepo.DEFAULT_RESOURCE_ACCESS_KEYCODES
+            );
         }
 
         public IConfiguration Configuration { get; }

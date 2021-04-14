@@ -2,8 +2,8 @@
 using System.Linq;
 using System.Linq.Expressions;
 using DORA.DotAPI.Context.Entities;
-using Microsoft.Extensions.Configuration;
 using DORA.DotAPI.Common;
+using Microsoft.Extensions.Configuration;
 
 namespace DORA.DotAPI.Context.Repositories
 {
@@ -14,8 +14,8 @@ namespace DORA.DotAPI.Context.Repositories
 
     public class UserRoleRepository : Repository<AccessContext, UserRole>, IUserRoleRepository
     {
-        public UserRoleRepository(AccessContext context, IConfiguration configuration)
-            : base(context, configuration)
+        public UserRoleRepository(AccessContext context, IConfiguration config)
+            : base(context, config)
         {
         }
 
@@ -62,14 +62,37 @@ namespace DORA.DotAPI.Context.Repositories
             return entity;
         }
 
-        public override UserRole Update(UserRole current, UserRole entity)
+        public override UserRole Update(UserRole current, UserRole previous)
         {
-            current.RoleId = entity.RoleId;
-            current.UserId = entity.UserId;
+            bool hasAccess = (from s in this.FindAll() where s.Id == previous.Id select s).FirstOrDefault() != null;
 
-            dbContext.SaveChanges();
+            if (hasAccess)
+            {
+                current.RoleId = previous.RoleId;
+                current.UserId = previous.UserId;
+
+                dbContext.SaveChanges();
+            }
 
             return current;
+        }
+
+        public override UserRole SaveChanges(UserRole entity)
+        {
+            if (entity.Id.HasValue)
+            {
+                bool hasAccess = (from s in this.FindAll() where s.Id == entity.Id select s).FirstOrDefault() != null;
+
+                if (hasAccess)
+                {
+                    dbContext.UserRoles.Attach(entity);
+                    dbContext.SaveChanges();
+
+                    return entity;
+                }
+            }
+
+            return null;
         }
 
         public override UserRole Delete(UserRole entity)

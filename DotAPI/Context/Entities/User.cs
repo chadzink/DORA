@@ -68,7 +68,7 @@ namespace DORA.DotAPI.Context.Entities
 
         [Column("requested_password_reset")]
         [JsonPropertyName("requested_password_reset")]
-        public bool RequestedPasswordReset { get; set; }
+        public DateTime? RequestedPasswordReset { get; set; }
 
         [Column("password_reset_token")]
         [JsonPropertyName("password_reset_token")]

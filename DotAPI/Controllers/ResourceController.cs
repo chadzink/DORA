@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using DORA.DotAPI.Context;
 using DORA.DotAPI.Context.Entities;
 using DORA.DotAPI.Context.Repositories;
-using Microsoft.Extensions.Configuration;
 using DORA.DotAPI.Common;
+using Microsoft.Extensions.Configuration;
 
 namespace DORA.DotAPI.Controllers
 {

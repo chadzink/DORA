@@ -2,8 +2,8 @@
 using System.Linq;
 using System.Linq.Expressions;
 using DORA.DotAPI.Context.Entities;
-using Microsoft.Extensions.Configuration;
 using DORA.DotAPI.Common;
+using Microsoft.Extensions.Configuration;
 
 namespace DORA.DotAPI.Context.Repositories
 {
@@ -14,8 +14,8 @@ namespace DORA.DotAPI.Context.Repositories
 
     public class RoleResourceAccessRepository : Repository<AccessContext, RoleResourceAccess>, IRoleResourceAccessRepository
     {
-        public RoleResourceAccessRepository(AccessContext context, IConfiguration configuration)
-            : base(context, configuration)
+        public RoleResourceAccessRepository(AccessContext context, IConfiguration config)
+            : base(context, config)
         {
         }
 
@@ -62,14 +62,36 @@ namespace DORA.DotAPI.Context.Repositories
             return entity;
         }
 
-        public override RoleResourceAccess Update(RoleResourceAccess current, RoleResourceAccess entity)
+        public override RoleResourceAccess Update(RoleResourceAccess current, RoleResourceAccess previous)
         {
-            current.RoleId = entity.RoleId;
-            current.ResourceId = entity.ResourceId;
+            bool hasAccess = (from s in this.FindAll() where s.Id == previous.Id select s).FirstOrDefault() != null;
 
-            dbContext.SaveChanges();
+            if (hasAccess)
+            {
+                current.RoleId = previous.RoleId;
+                current.ResourceId = previous.ResourceId;
+                dbContext.SaveChanges();
+            }
 
             return current;
+        }
+
+        public override RoleResourceAccess SaveChanges(RoleResourceAccess entity)
+        {
+            if (entity.Id.HasValue)
+            {
+                bool hasAccess = (from s in this.FindAll() where s.Id == entity.Id select s).FirstOrDefault() != null;
+
+                if (hasAccess)
+                {
+                    dbContext.RoleResourcesAccesses.Attach(entity);
+                    dbContext.SaveChanges();
+
+                    return entity;
+                }
+            }
+
+            return null;
         }
 
         public override RoleResourceAccess Delete(RoleResourceAccess entity)

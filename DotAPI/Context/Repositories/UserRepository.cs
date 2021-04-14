@@ -2,23 +2,20 @@
 using System.Linq;
 using System.Linq.Expressions;
 using DORA.DotAPI.Context.Entities;
-using Microsoft.Extensions.Configuration;
 using DORA.DotAPI.Common;
-using DORA.DotAPI.Helpers;
+using Microsoft.Extensions.Configuration;
 
 namespace DORA.DotAPI.Context.Repositories
 {
     public interface IUserRepository : IRepository<User>
     {
         string UserPasswordHash(User user);
-        bool AssignUserPassword(User user, UserPassword password);
+        string AssignUserPassword(User user, UserPassword password);
     }
     public class UserRepository : Repository<AccessContext, User>, IUserRepository
     {
-        //private ClaimsPrincipal _currentUser { get; set; }
-
-        public UserRepository(AccessContext context, IConfiguration configuration)
-            : base(context, configuration)
+        public UserRepository(AccessContext context, IConfiguration config)
+            : base(context, config)
         {
         }
 
@@ -36,11 +33,11 @@ namespace DORA.DotAPI.Context.Repositories
                    select s.Password).FirstOrDefault();
         }
 
-        public bool AssignUserPassword(User user, UserPassword password)
+        public string AssignUserPassword(User user, UserPassword password)
         {
             User safeUser = this.FindAll().Where(u => u.Id == user.Id.Value).FirstOrDefault();
 
-            // check if user password already exist historically fo rthe user
+            // check if user password already exist historically for the user
             int hasOldPassword = (from up in dbContext.UserPasswords
                                     where
                                         up.Password == password.Password
@@ -49,28 +46,26 @@ namespace DORA.DotAPI.Context.Repositories
                                     select up).Count();
 
             if (hasOldPassword > 0)
-                return false;
+                return "Error: Password used within last 90 days.";
 
             if (safeUser != null && password != null)
             {
-                if (user.CurrentUserPasswordId == password.Id) {
-
-                    // expire any old passwords
-                    foreach(UserPassword oldPwd in dbContext.UserPasswords
-                        .Where(up => up.UserId == user.Id.Value && up.ArchivedStamp == null)
-                    )
-                    {
-                        oldPwd.ArchivedStamp = DateTime.Now;
-                    }
-
-                    dbContext.UserPasswords.Add(password);
-                    dbContext.SaveChanges();
-
-                    return true;
+                // expire any old passwords
+                foreach(UserPassword oldPwd in dbContext.UserPasswords
+                    .Where(up => up.UserId == safeUser.Id.Value && up.ArchivedStamp == null)
+                )
+                {
+                    oldPwd.ArchivedStamp = DateTime.Now;
                 }
+
+                safeUser.CurrentUserPasswordId = password.Id.Value;
+                dbContext.UserPasswords.Add(password);
+                dbContext.SaveChanges();
+
+                return "Success";
             }
 
-            return false;
+            return "Error: User not matched in database or password object is null.";
         }
 
         public override IQueryable<User> FindAll()
@@ -113,28 +108,50 @@ namespace DORA.DotAPI.Context.Repositories
             return entity;
         }
 
-        public override User Update(User current, User entity)
+        public override User Update(User current, User previous)
         {
-            User currentUser = this.CurrentUser();
+            bool hasAccess = (from s in this.FindAll() where s.Id == previous.Id select s).FirstOrDefault() != null;
 
-            current.UserName = entity.UserName;
-            current.DisplayName = entity.DisplayName;
-            current.FirstName = entity.FirstName;
-            current.LastName = entity.LastName;
-            current.Email = entity.Email;
-            current.Phone = entity.Phone;
-            current.FirstLoginStamp = entity.FirstLoginStamp;
-            current.LastLoginStamp = entity.LastLoginStamp;
-            current.ExternalId = entity.ExternalId;
+            if (hasAccess)
+            {
+                current.UserName = previous.UserName;
+                current.DisplayName = previous.DisplayName;
+                current.FirstName = previous.FirstName;
+                current.LastName = previous.LastName;
+                current.Email = previous.Email;
+                current.Phone = previous.Phone;
+                current.FirstLoginStamp = previous.FirstLoginStamp;
+                current.LastLoginStamp = previous.LastLoginStamp;
+                current.ExternalId = previous.ExternalId;
 
-            // cannot set the user password in common create, need to use special AssignUserPassword above
+                // cannot set the user password in common create, need to use special AssignUserPassword above
 
-            current.enabled = entity.enabled;
-            current.LastUpdatedStamp = DateTime.Now;
+                current.enabled = previous.enabled;
+                current.LastUpdatedStamp = DateTime.Now;
 
-            dbContext.SaveChanges();
+                dbContext.SaveChanges();
+            }
 
             return current;
+        }
+
+        public override User SaveChanges(User entity)
+        {
+            if (entity.Id.HasValue)
+            {
+                User existingUser = (from s in this.FindAll() where s.Id == entity.Id select s).FirstOrDefault();
+
+                // cannot change the user password, must be the same
+                if (existingUser != null && entity.CurrentUserPasswordId == existingUser.CurrentUserPasswordId)
+                {
+                    dbContext.Users.Attach(entity);
+                    dbContext.SaveChanges();
+
+                    return entity;
+                }
+            }
+
+            return null;
         }
 
         public override User Delete(User entity)

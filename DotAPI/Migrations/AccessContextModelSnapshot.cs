@@ -208,8 +208,8 @@ namespace DotAPI.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("phone");
 
-                    b.Property<bool>("RequestedPasswordReset")
-                        .HasColumnType("bit")
+                    b.Property<DateTime?>("RequestedPasswordReset")
+                        .HasColumnType("datetime2")
                         .HasColumnName("requested_password_reset");
 
                     b.Property<string>("UserName")

@@ -17,6 +17,8 @@ namespace DORA.DotAPI.Services
         User Authenticate(string username, string password);
         User NewUser(string username, string password, string email, string firstname = null, string lastname = null, string phonenumber = null);
         User ChangePassword(string username, string oldPassword, string newPassword);
+        User CompletePasswordReset(User user, Guid token, string newPassword);
+        User SerResetRequested(User user);
 
         User UserWithToken(User user);
         JwtRefreshToken MakeRefreshToken(string username);
@@ -34,7 +36,6 @@ namespace DORA.DotAPI.Services
             AccessContext dbContext,
             UserRepository dataRepository,
             JwtRefreshTokenRepository jwtRefreshTokenRepository,
-            RoleResourceAccessRepository roleResourceAccessRepository,
             IConfiguration configuration
         )
         {
@@ -42,6 +43,14 @@ namespace DORA.DotAPI.Services
             _dataRepository = dataRepository;
             _jwtRefreshTokenRepository = jwtRefreshTokenRepository;
             _configuration = configuration;
+        }
+
+        public IConfiguration Config
+        {
+            get
+            {
+                return this._configuration;
+            }
         }
 
         public User Authenticate(string username, string password)
@@ -71,11 +80,11 @@ namespace DORA.DotAPI.Services
         {
             return JwtToken.AddTokensToUser(
                 user,
-                _configuration["AppSettings:Secret"],
-                _configuration["AppSettings:JwtIssuer"],
-                _configuration["AppSettings:JwtAudience"],
-                int.Parse(_configuration["AppSettings:JwtExpiresMinutes"]),
-                int.Parse(_configuration["AppSettings:JwtRefreshExpiresDays"]),
+                Config["AppSettings:Secret"],
+                Config["AppSettings:JwtIssuer"],
+                Config["AppSettings:JwtAudience"],
+                int.Parse(Config["AppSettings:JwtExpiresMinutes"]),
+                int.Parse(Config["AppSettings:JwtRefreshExpiresDays"]),
                 _dbContext
             );
         }
@@ -85,35 +94,42 @@ namespace DORA.DotAPI.Services
             User user = _dataRepository.FindOneBy(r => r.UserName == username);
 
             // user must not exist with new username provided
-            if (user == null)
+            if (user == null && !string.IsNullOrEmpty(email))
             {
-                // set user passowrd
-                PasswordHasher passwordHasher = new PasswordHasher();
+                // check if email already exist
+                user = _dataRepository.FindOneBy(r => r.Email == email);
 
-                User newUser = new User {
-                    Id = Guid.NewGuid(),
-                    UserName = username,
-                    DisplayName = username.ToUpper(),
-                    enabled = 1,
-                    Email = email,
-                    FirstName = firstname,
-                    LastName = lastname,
-                    Phone = phonenumber,
-                };
+                if (user == null)
+                {
+                    PasswordHasher passwordHasher = new PasswordHasher();
 
-                UserPassword newUserPassword = new UserPassword {
-                    Id = Guid.NewGuid(),
-                    UserId = newUser.Id.Value,
-                    Password = passwordHasher.HashPassword(password),
-                    CreatedStamp = DateTime.Now
-                };
+                    User newUser = new User
+                    {
+                        Id = Guid.NewGuid(),
+                        UserName = username,
+                        DisplayName = username.ToUpper(),
+                        enabled = 1,
+                        Email = email,
+                        FirstName = firstname,
+                        LastName = lastname,
+                        Phone = phonenumber,
+                    };
 
-                newUser.CurrentUserPasswordId = newUserPassword.Id.Value;
+                    UserPassword newUserPassword = new UserPassword
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = newUser.Id.Value,
+                        Password = passwordHasher.HashPassword(password),
+                        CreatedStamp = DateTime.Now
+                    };
 
-                _dataRepository.Create(newUser);
-                _dataRepository.AssignUserPassword(newUser, newUserPassword);
+                    newUser.CurrentUserPasswordId = newUserPassword.Id.Value;
 
-                return this.UserWithToken(newUser);
+                    _dataRepository.Create(newUser);
+                    _dataRepository.AssignUserPassword(newUser, newUserPassword);
+
+                    return this.UserWithToken(newUser);
+                }
             }
 
             return null;
@@ -124,7 +140,7 @@ namespace DORA.DotAPI.Services
             User userWithToken = this.Authenticate(username, oldPassword);
 
             if (userWithToken == null)
-                return null;
+                throw new Exception("Failed Authentication");
 
             // we know the user passed authentication with old password
 
@@ -138,12 +154,53 @@ namespace DORA.DotAPI.Services
                 CreatedStamp = DateTime.Now
             };
 
-            bool assignedNewPassword = _dataRepository.AssignUserPassword(userWithToken, newUserPassword);
+            string assignedNewPassword = _dataRepository.AssignUserPassword(userWithToken, newUserPassword);
 
-            if (!assignedNewPassword)
-                return null;
+            if (assignedNewPassword != "Success")
+                throw new Exception(assignedNewPassword);
 
             return this.UserWithToken(userWithToken);
+        }
+
+        public User CompletePasswordReset(User user, Guid token, string newPassword)
+        {
+            // check the user status for reset password
+            if (user.PasswordResetToken != token
+                && user.RequestedPasswordReset < DateTime.Now.AddDays(-3)
+            )
+            {
+                return null;
+            }
+
+            PasswordHasher passwordHasher = new PasswordHasher();
+
+            UserPassword newUserPassword = new UserPassword
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id.Value,
+                Password = passwordHasher.HashPassword(newPassword),
+                CreatedStamp = DateTime.Now
+            };
+
+            string assignedNewPassword = _dataRepository.AssignUserPassword(user, newUserPassword);
+
+            user.RequestedPasswordReset = null;
+            user.PasswordResetToken = null;
+
+            _dataRepository.SaveChanges(user);
+
+            if (assignedNewPassword != "Success")
+                return null;
+
+            return this.UserWithToken(user);
+        }
+
+        public User SerResetRequested(User user)
+        {
+            user.RequestedPasswordReset = DateTime.Now;
+            user.PasswordResetToken = Guid.NewGuid();
+
+            return _dataRepository.SaveChanges(user);
         }
 
         public JwtRefreshToken MakeRefreshToken(string username)
@@ -161,7 +218,7 @@ namespace DORA.DotAPI.Services
                 _jwtRefreshTokenRepository.Delete(expiredRefreshToken);
             }
 
-            int jwtRefreshExpiresDays = int.Parse(_configuration["AppSettings:JwtRefreshExpiresDays"]);
+            int jwtRefreshExpiresDays = int.Parse(Config["AppSettings:JwtRefreshExpiresDays"]);
 
             byte[] randomNumber = new byte[32];
             System.Security.Cryptography.RandomNumberGenerator rng = System.Security.Cryptography.RandomNumberGenerator.Create();
@@ -173,7 +230,7 @@ namespace DORA.DotAPI.Services
             {
                 RefreshToken = refreshTokenString,
                 UserName = username,
-                ValidUntil = System.DateTime.UtcNow.AddDays(jwtRefreshExpiresDays),
+                ValidUntil = DateTime.UtcNow.AddDays(jwtRefreshExpiresDays),
             });
 
             return _jwtRefreshTokenRepository.FindOneBy(r => r.RefreshToken == refreshTokenString && r.UserName == username);
@@ -181,7 +238,7 @@ namespace DORA.DotAPI.Services
 
         public ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
         {
-            string secret = _configuration["AppSettings:Secret"];
+            string secret = Config["AppSettings:Secret"];
 
             var tokenValidationParameters = new TokenValidationParameters
             {

@@ -52,7 +52,7 @@ namespace DotAPI.Migrations
                     user_password_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     needs_password_change = table.Column<bool>(type: "bit", nullable: false),
                     enabled = table.Column<short>(type: "smallint", nullable: false),
-                    requested_password_reset = table.Column<bool>(type: "bit", nullable: false),
+                    requested_password_reset = table.Column<DateTime>(type: "datetime2", nullable: true),
                     password_reset_token = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     created_stamp = table.Column<DateTime>(type: "datetime2", nullable: true),
                     last_updated_stamp = table.Column<DateTime>(type: "datetime2", nullable: true)

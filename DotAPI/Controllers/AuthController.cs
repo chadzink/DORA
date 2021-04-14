@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using Microsoft.AspNetCore.Authorization;
 using System.Linq;
 using System.Security.Claims;
@@ -10,6 +11,7 @@ using DORA.DotAPI.Context.Repositories;
 using DORA.DotAPI.Services;
 using DORA.DotAPI.Helpers;
 using DORA.DotAPI.Models.Controllers.Auth;
+using DORA.Notify;
 using Microsoft.AspNetCore.Http;
 
 namespace DotAPI.Controllers
@@ -22,30 +24,35 @@ namespace DotAPI.Controllers
     public class AuthController : ControllerBase
     {
         private readonly AccessContext _accessContext;
-        private readonly IConfiguration _configuration;
         private readonly IUserService _userService;
         private readonly UserRepository _userRepository;
         private readonly JwtRefreshTokenRepository _jwtRefreshTokenRepository;
-        private readonly RoleResourceAccessRepository _roleResourceAccessRepository;
+        private IConfiguration _configuration;
+
+        public IConfiguration Config
+        {
+            get
+            {
+                return this._configuration;
+            }
+        }
 
         public AuthController(
             AccessContext accessContext,
-            IConfiguration configuration
+            IConfiguration config
         )
         {
             _accessContext = accessContext;
-            _configuration = configuration;
+            _configuration = config;
 
-            _userRepository = new UserRepository(accessContext, configuration);
-            _jwtRefreshTokenRepository = new JwtRefreshTokenRepository(accessContext, configuration);
-            _roleResourceAccessRepository = new RoleResourceAccessRepository(accessContext, configuration);
+            _userRepository = new UserRepository(accessContext, config);
+            _jwtRefreshTokenRepository = new JwtRefreshTokenRepository(accessContext, config);
 
             _userService = new UserService(
                 accessContext,
                 _userRepository,
                 _jwtRefreshTokenRepository,
-                _roleResourceAccessRepository,
-                configuration
+                config
             );
         }
 
@@ -69,6 +76,12 @@ namespace DotAPI.Controllers
                 return BadRequest(JsonErr.Serialize());
             }
 
+            if (string.IsNullOrEmpty(newUser.email))
+            {
+                JsonDataError JsonErr = new JsonDataError("Must provide a unique user email to register.");
+                return BadRequest(JsonErr.Serialize());
+            }
+
             User user = _userService.NewUser(newUser.username, newUser.password, newUser.email, newUser.firstname, newUser.lastname, newUser.phonenumber);
 
             if (user == null)
@@ -78,12 +91,12 @@ namespace DotAPI.Controllers
             }
 
             // Need to check if the current user can create USER-ROLES
-            UserRoleRepository userRoleRepository = new UserRoleRepository(_accessContext, _configuration);
+            UserRoleRepository userRoleRepository = new UserRoleRepository(_accessContext, this.Config);
 
             if (userRoleRepository.CreateAccess("USER-ROLE", User.Claims.Where(c => c.Type == ClaimTypes.Role)))
             {
                 // Add roles requested to user
-                RoleRepository roleRepository = new RoleRepository(_accessContext, _configuration);
+                RoleRepository roleRepository = new RoleRepository(_accessContext, this.Config);
 
                 IQueryable<Role> onlyUserRoles = roleRepository.FindBy(new Func<Role, bool>[1] { (r => newUser.RolesRequested.Contains(r.NameCanonical)) });
 
@@ -144,7 +157,7 @@ namespace DotAPI.Controllers
         /// <response code="200">JSON object with user with updated JWT and refresh tokens.</response>
         /// <response code="308">Redirect to Save Token URL in JWT Client Record with token and refreshToken querystring params.</response>
         /// <response code="400">JSON object with success = false and message containing error type.</response>
-        [AllowAnonymous, HttpPost("change-password")]
+        [HttpPost("change-password")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status308PermanentRedirect)]
@@ -160,7 +173,177 @@ namespace DotAPI.Controllers
                 return BadRequest(JsonErr.Serialize());
             }
 
-            User user = _userService.ChangePassword(model.username, model.oldPassword, model.newPassword);
+            try
+            {
+                User user = _userService.ChangePassword(model.username, model.oldPassword, model.newPassword);
+
+                if (user == null)
+                {
+                    JsonDataError JsonErr = new JsonDataError("Unable to assign new password to user");
+                    return BadRequest(JsonErr.Serialize());
+                }
+
+                JsonData<User> JsonObj = new JsonData<User>(user, user.JwtToken, user.RefreshJwtToken, true, "Logged In");
+                return Ok(JsonObj.Serialize());
+            }
+            catch (Exception e)
+            {
+                JsonDataError JsonErr = new JsonDataError(e.Message);
+                return BadRequest(JsonErr.Serialize());
+            }
+        }
+
+        /// <summary>
+        ///     Request Password Reset
+        /// </summary>
+        /// <remarks>
+        ///     Allows a user to provide username or email and request that their user be allowed too change their password.
+        /// </remarks>
+        /// <response code="200">JSON object with user with updated JWT and refresh tokens.</response>
+        /// <response code="308">Redirect to Save Token URL in JWT Client Record with token and refreshToken querystring params.</response>
+        /// <response code="400">JSON object with success = false and message containing error type.</response>
+        [AllowAnonymous, HttpGet("request-rest")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status308PermanentRedirect)]
+        public IActionResult ApiRequestUserReset([FromQuery] string email)
+        {
+            // check that user exist
+            User user = _userRepository.FindOneBy(r => r.Email == email && r.enabled != 0);
+
+            if (user == null)
+            {
+                JsonDataError JsonErr = new JsonDataError("No user found with email address provided.");
+                return BadRequest(JsonErr.Serialize());
+            }
+
+            // Set the User RequestedPasswordReset Datetime & PasswordResetToken
+            user = _userService.SerResetRequested(user);
+
+            if (user == null || !user.PasswordResetToken.HasValue)
+            {
+                JsonDataError JsonErr = new JsonDataError("Unable to assign password reset token for user.");
+                return BadRequest(JsonErr.Serialize());
+            }
+
+            // load the email template to use
+            string templateType = this.Config["AuthConfig:ResetUserEMailTemplateType"];
+            string templatebody = null;
+
+            if (templateType == null)
+            {
+                JsonDataError JsonErr = new JsonDataError("Password reset template not configured. Use AuthConfig.ResetUserEMailTemplateType in app config with value of [config] or [file].");
+                return BadRequest(JsonErr.Serialize());
+            }
+            else if (templateType == "config")
+            {
+                templatebody = this.Config["AuthConfig:ResetUserEMailHTMLTemplate"];
+
+                if (string.IsNullOrEmpty(templatebody))
+                {
+                    JsonDataError JsonErr = new JsonDataError("Password reset template not configured. Use AuthConfig.ResetUserEMailHTMLTemplate needs to have a string template setup.");
+                    return BadRequest(JsonErr.Serialize());
+                }
+            }
+            else if (templateType == "file")
+            {
+                string templateFilePath = this.Config["AuthConfig:ResetUserEMailHTMLTemplate"];
+                if (string.IsNullOrEmpty(templateFilePath))
+                {
+                    JsonDataError JsonErr = new JsonDataError("Password reset template not configured. Use AuthConfig.ResetUserEMailHTMLTemplate needs to have a string template setup.");
+                    return BadRequest(JsonErr.Serialize());
+                }
+
+                FileInfo templateFileInfo = new FileInfo(templateFilePath);
+
+                if (!templateFileInfo.Exists)
+                {
+                    JsonDataError JsonErr = new JsonDataError(string.Format("The file path in AuthConfig.ResetUserEMailHTMLTemplate [{0}] was not found.", templateFilePath));
+                    return BadRequest(JsonErr.Serialize());
+                }
+
+                templatebody = System.IO.File.ReadAllText(templateFileInfo.FullName);
+            }
+
+            // Swap token in template body
+            templatebody = templatebody.Replace("[@ResetToken]", user.PasswordResetToken.Value.ToString());
+
+            // Swap in front end URL for handling reset request, to build a response with new password form
+            string resetRequestTokenPage = this.Config["AuthConfig:ResetTokenPage"];
+
+            if (string.IsNullOrEmpty(resetRequestTokenPage))
+            {
+                JsonDataError JsonErr = new JsonDataError("Missing token request form url in configuration with AuthConfig:ResetTokenPage.");
+                return BadRequest(JsonErr.Serialize());
+            }
+
+            templatebody = templatebody.Replace("[@ResetTokenPage]", resetRequestTokenPage);
+
+            // Send user an email with the token and a link to the resolve page with the token in the URL
+            string fromAddress = this.Config["AuthConfig:ResetTokenFromEMailAddress"];
+
+            if (string.IsNullOrEmpty(fromAddress))
+            {
+                JsonDataError JsonErr = new JsonDataError("Missing email to send from in configuration with AuthConfig:ResetTokenFromEMailAddress.");
+                return BadRequest(JsonErr.Serialize());
+            }
+
+            EMailSender eMailSender = new EMailSender(fromAddress, this.Config);
+            string sendError = null;
+
+            if (!eMailSender.MessageTo(email, "Reset Password REquest", templatebody, out sendError)) {
+                JsonDataError JsonErr = new JsonDataError(sendError);
+                return BadRequest(JsonErr.Serialize());
+            }
+
+            // Finished
+            JsonData<User> JsonObj = new JsonData<User>(user, user.JwtToken, user.RefreshJwtToken, true, "Message Sent");
+            return Ok(JsonObj.Serialize());
+        }
+
+        /// <summary>
+        ///     Resolve Password Reset
+        /// </summary>
+        /// <remarks>
+        ///     Allows a user to provide a reset token and a new password
+        /// </remarks>
+        /// <response code="200">JSON object with user with updated JWT and refresh tokens.</response>
+        /// <response code="308">Redirect to Save Token URL in JWT Client Record with token and refreshToken querystring params.</response>
+        /// <response code="400">JSON object with success = false and message containing error type.</response>
+        [AllowAnonymous, HttpGet("resolve-rest")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status308PermanentRedirect)]
+        public IActionResult ApiResolveUserReset([FromBody] AuthResetResolveModel model, [FromQuery] string token)
+        {
+            Guid tokenAsGuid = Guid.Parse(token);
+
+            // check that the new and retype passwords match
+            if (model.newPassword != model.retypeNewPassword)
+            {
+                JsonDataError JsonErr = new JsonDataError("Password provided does not match");
+                return BadRequest(JsonErr.Serialize());
+            }
+
+            // check that the User for username exist with
+            // 1. A RequestedPasswordReset that is not older than 3 days
+            // 2. A PasswordResetToken that matches teh one provided
+            // 3. The user in enabled
+
+            User user = _userRepository.FindOneBy(r =>
+                r.PasswordResetToken == tokenAsGuid
+                && r.RequestedPasswordReset >= DateTime.Now.AddDays(-3)
+                && r.enabled != 0
+            );
+
+            if (user == null)
+            {
+                JsonDataError JsonErr = new JsonDataError("Invalid token or expired reset request. Request cannot be older than 3 days.");
+                return BadRequest(JsonErr.Serialize());
+            }
+
+            // Set the users password to the new password
+            user = _userService.CompletePasswordReset(user, tokenAsGuid, model.newPassword);
 
             if (user == null)
             {
@@ -168,12 +351,10 @@ namespace DotAPI.Controllers
                 return BadRequest(JsonErr.Serialize());
             }
 
-            JsonData<User> JsonObj = new JsonData<User>(user, user.JwtToken, user.RefreshJwtToken, true, "Logged In");
+            // send back a user with valid token
+            JsonData<User> JsonObj = new JsonData<User>(user, user.JwtToken, user.RefreshJwtToken, true, "Success");
             return Ok(JsonObj.Serialize());
         }
-
-        // request password reset route
-        // resolve reset password route
 
         /// <summary>
         ///     Gets the current user based on the token in the AUthentication header.

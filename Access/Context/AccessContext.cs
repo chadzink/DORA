@@ -10,7 +10,7 @@ namespace DORA.Access.Context
 {
     public class AccessContext : BaseContext
     {
-        public AccessContext(DbContextOptions<BaseContext> options)
+        public AccessContext(DbContextOptions options)
             : base(options)
         {
         }

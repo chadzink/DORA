@@ -6,7 +6,7 @@
     <PackageId>DORA.Access</PackageId>
     <Authors>Chad Zink</Authors>
     <Description>The Web Application Programming Interface (API) for the .Net with React (DORA) framework.</Description>
-    <PackageVersion>1.0.1</PackageVersion>
+    <PackageVersion>1.0.2</PackageVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -40,6 +40,6 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="5.0.0" />
     <PackageReference Include="DORA.Notify" Version="1.0.5" />
-    <PackageReference Include="DORA.SqlContext" Version="1.0.7" />
+    <PackageReference Include="DORA.SqlContext" Version="1.0.8" />
   </ItemGroup>
 </Project>

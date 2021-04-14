@@ -6,10 +6,10 @@ namespace DORA.SqlContext
 {
     public class BaseContext : DbContext
     {
-        private DbContextOptions<BaseContext> _options;
-        public DbContextOptions<BaseContext> options { get { return this._options; } }
+        private DbContextOptions _options;
+        public DbContextOptions options { get { return this._options; } }
 
-        public BaseContext(DbContextOptions<BaseContext> options)
+        public BaseContext(DbContextOptions options)
             : base(options)
         {
             this._options = options;

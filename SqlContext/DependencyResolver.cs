@@ -1,12 +1,9 @@
 ﻿using System;
-using DORA.DotAPI.Context;
-using DORA.DotAPI.Context.Repositories;
-using DORA.DotAPI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace DORA.DotAPI.Helpers
+namespace DORA.SqlContext
 {
     public class DependencyResolver
     {
@@ -37,19 +34,19 @@ namespace DORA.DotAPI.Helpers
                 IConfigurationService configService = provider.GetService<IConfigurationService>();
                 IConfiguration configuration = configService.GetConfiguration();
 
-                string connectionString = configuration.GetConnectionString("AccessConnection");
-                DbContextOptionsBuilder<AccessContext> optionsBuilder = new DbContextOptionsBuilder<AccessContext>();
+                string connectionString = configuration.GetConnectionString("BaseConnection");
+                DbContextOptionsBuilder<BaseContext> optionsBuilder = new DbContextOptionsBuilder<BaseContext>();
 
-                string targetAssembly = "DotAPI";
-                if (configuration["Migrations:AccessTargetMigrationsAssembly"] != null)
-                    targetAssembly = configuration.GetValue<string>("Migrations:AccessTargetMigrationsAssembly");
+                string targetAssembly = "SqlContext";
+                if (configuration["Migrations:SqlTargetMigrationsAssembly"] != null)
+                    targetAssembly = configuration["Migrations:SqlTargetMigrationsAssembly"];
 
                 optionsBuilder.UseSqlServer(
                     connectionString,
                     builder => builder.MigrationsAssembly(targetAssembly)
                 );
 
-                return new AccessContext(optionsBuilder.Options);
+                return new BaseContext(optionsBuilder.Options);
             });
         }
     }

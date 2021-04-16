@@ -185,7 +185,7 @@ namespace DORA.Access.Common
                 return NotFound(JsonErr.Serialize());
             }
 
-            TEntity deletedEntity = DataRepository.Delete(entity);
+            TEntity deletedEntity = DataRepository.Delete(new TEntity[] { entity }).First();
 
             User user = this.IncludeUser ? DataRepository.CurrentUser() : null;
             JsonData<TEntity> jsonResult = this.IncludeUser

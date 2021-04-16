@@ -85,103 +85,122 @@ namespace DORA.Access.Context.Repositories
             return (from r in dbContext.Users select r).Where(criteria).FirstOrDefault();
         }
 
-        public override IQueryable<User> FindBy(Func<User, bool>[] criteria)
+        public override IQueryable<User> FindBy(Expression<Func<User, bool>> criteria)
         {
             IQueryable<User> query = FindAll();
 
             return base.FindBy(query, criteria);
         }
 
-        public override User Create(User entity)
+        public override User[] Create(User[] entity)
         {
-            User currentUser = this.CurrentUser();
+            foreach (User e in entity)
+            {
+                if (!e.Id.HasValue)
+                    e.Id = Guid.NewGuid();
 
-            if (!entity.Id.HasValue)
-                entity.Id = Guid.NewGuid();
+                e.LastUpdatedStamp = DateTime.Now;
+                e.CreatedStamp = DateTime.Now;
+            }
 
-            entity.LastUpdatedStamp = DateTime.Now;
-            entity.CreatedStamp = DateTime.Now;
-
-            dbContext.Users.Add(entity);
+            dbContext.Users.AddRange(entity);
             dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override User Update(User current, User previous)
+        public override User[] Update(User[] current, User[] previous)
         {
-            bool hasAccess = (from s in this.FindAll() where s.Id == previous.Id select s).FirstOrDefault() != null;
+            if (current.Length != previous.Length)
+                return null;
 
-            if (hasAccess)
+            // filter & sort out entities that the user doe not have access to
+            current = (
+                from e in this.FindAll().ToList()
+                join c in current on e.Id equals c.Id.Value
+                select c
+            ).OrderBy(c => c.Id).ToArray();
+
+            // filter and sort
+            previous = (
+                from c in current
+                join p in previous on c.Id.Value equals p.Id.Value
+                select p
+            ).OrderBy(c => c.Id).ToArray();
+
+            for (int e = 0; e < current.Length; e++)
             {
-                current.UserName = previous.UserName;
-                current.DisplayName = previous.DisplayName;
-                current.FirstName = previous.FirstName;
-                current.LastName = previous.LastName;
-                current.Email = previous.Email;
-                current.Phone = previous.Phone;
-                current.FirstLoginStamp = previous.FirstLoginStamp;
-                current.LastLoginStamp = previous.LastLoginStamp;
-                current.ExternalId = previous.ExternalId;
-
+                current[e].UserName = previous[e].UserName;
+                current[e].DisplayName = previous[e].DisplayName;
+                current[e].FirstName = previous[e].FirstName;
+                current[e].LastName = previous[e].LastName;
+                current[e].Email = previous[e].Email;
+                current[e].Phone = previous[e].Phone;
+                current[e].FirstLoginStamp = previous[e].FirstLoginStamp;
+                current[e].LastLoginStamp = previous[e].LastLoginStamp;
+                current[e].ExternalId = previous[e].ExternalId;
                 // cannot set the user password in common create, need to use special AssignUserPassword above
-
-                current.enabled = previous.enabled;
-                current.LastUpdatedStamp = DateTime.Now;
-
-                dbContext.SaveChanges();
+                current[e].enabled = previous[e].enabled;
+                current[e].LastUpdatedStamp = DateTime.Now;
             }
+
+            dbContext.Users.AttachRange(current);
+            dbContext.SaveChanges();
 
             return current;
         }
 
-        public override User SaveChanges(User entity)
+        public override User[] SaveChanges(User[] entity)
         {
-            if (entity.Id.HasValue)
-            {
-                User existingUser = (from s in this.FindAll() where s.Id == entity.Id select s).FirstOrDefault();
-
+            entity = (
+                from e in this.FindAll().ToList()
+                join p in entity on e.Id equals p.Id.Value
                 // cannot change the user password, must be the same
-                if (existingUser != null && entity.CurrentUserPasswordId == existingUser.CurrentUserPasswordId)
-                {
-                    dbContext.Users.Attach(entity);
-                    dbContext.SaveChanges();
+                where e.CurrentUserPasswordId == p.CurrentUserPasswordId
+                select p
+            ).ToArray();
 
-                    return entity;
-                }
-            }
-
-            return null;
-        }
-
-        public override User Delete(User entity)
-        {
-            User dbEntity = this.Find(entity.Id.Value);
-            User currentUser = this.CurrentUser();
-
-            if (dbEntity != null)
-            {
-                dbEntity.LastUpdatedStamp = DateTime.Now;
-                dbEntity.ArchivedStamp = DateTime.Now;
-                dbContext.SaveChanges();
-
-                return dbEntity;
-            }
+            dbContext.Users.AttachRange(entity);
+            dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override User Restore(Guid id)
+        public override User[] Delete(User[] entity)
         {
-            User entity = (from s in dbContext.Users where s.Id == id select s).First();
-            User currentUser = this.CurrentUser();
+            entity = (
+                from e in this.FindAll().ToList()
+                join p in entity on e.Id equals p.Id.Value
+                select p
+            ).ToArray();
 
-            if (entity != null)
+            foreach (User dbEntity in entity)
             {
-                entity.ArchivedStamp = null;
-                entity.LastUpdatedStamp = System.DateTime.Now;
-                dbContext.SaveChanges();
+                dbEntity.ArchivedStamp = DateTime.Now;
+                dbEntity.LastUpdatedStamp = DateTime.Now;
             }
+
+            dbContext.Users.AttachRange(entity);
+            dbContext.SaveChanges();
+
+            return entity;
+        }
+
+        public override User[] Restore(Guid[] id)
+        {
+            User[] entity = (
+                from e in dbContext.Users
+                where id.Contains(e.Id.Value)
+                select e
+            ).ToArray();
+
+            foreach (User e in entity)
+            {
+                e.ArchivedStamp = null;
+                e.LastUpdatedStamp = DateTime.Now;
+            }
+
+            dbContext.SaveChanges();
 
             return entity;
         }

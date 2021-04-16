@@ -44,80 +44,105 @@ namespace DORA.Access.Context.Repositories
             return dbContext.RoleResourcesAccesses.FirstOrDefault(criteria);
         }
 
-        public override IQueryable<RoleResourceAccess> FindBy(Func<RoleResourceAccess, bool>[] criteria)
+        public override IQueryable<RoleResourceAccess> FindBy(Expression<Func<RoleResourceAccess, bool>> criteria)
         {
             IQueryable<RoleResourceAccess> query = FindAll();
 
             return base.FindBy(query, criteria);
         }
 
-        public override RoleResourceAccess Create(RoleResourceAccess entity)
+        public override RoleResourceAccess[] Create(RoleResourceAccess[] entity)
         {
-            if (!entity.Id.HasValue)
-                entity.Id = Guid.NewGuid();
+            foreach (RoleResourceAccess e in entity)
+            {
+                if (!e.Id.HasValue)
+                    e.Id = Guid.NewGuid();
+            }
 
-            dbContext.RoleResourcesAccesses.Add(entity);
+            dbContext.RoleResourcesAccesses.AddRange(entity);
             dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override RoleResourceAccess Update(RoleResourceAccess current, RoleResourceAccess previous)
+        public override RoleResourceAccess[] Update(RoleResourceAccess[] current, RoleResourceAccess[] previous)
         {
-            bool hasAccess = (from s in this.FindAll() where s.Id == previous.Id select s).FirstOrDefault() != null;
+            if (current.Length != previous.Length)
+                return null;
 
-            if (hasAccess)
+            // filter & sort out entities that the user doe not have access to
+            current = (
+                from e in this.FindAll().ToList()
+                join c in current on e.Id equals c.Id.Value
+                select c
+            ).OrderBy(c => c.Id).ToArray();
+
+            // filter and sort
+            previous = (
+                from c in current
+                join p in previous on c.Id.Value equals p.Id.Value
+                select p
+            ).OrderBy(c => c.Id).ToArray();
+
+            for (int e = 0; e < current.Length; e++)
             {
-                current.RoleId = previous.RoleId;
-                current.ResourceId = previous.ResourceId;
-                dbContext.SaveChanges();
+                current[e].RoleId = previous[e].RoleId;
+                current[e].ResourceId = previous[e].ResourceId;
             }
+
+            dbContext.RoleResourcesAccesses.AttachRange(current);
+            dbContext.SaveChanges();
 
             return current;
         }
 
-        public override RoleResourceAccess SaveChanges(RoleResourceAccess entity)
+        public override RoleResourceAccess[] SaveChanges(RoleResourceAccess[] entity)
         {
-            if (entity.Id.HasValue)
-            {
-                bool hasAccess = (from s in this.FindAll() where s.Id == entity.Id select s).FirstOrDefault() != null;
+            entity = (
+                from e in this.FindAll().ToList()
+                join p in entity on e.Id equals p.Id.Value
+                select p
+            ).ToArray();
 
-                if (hasAccess)
-                {
-                    dbContext.RoleResourcesAccesses.Attach(entity);
-                    dbContext.SaveChanges();
-
-                    return entity;
-                }
-            }
-
-            return null;
-        }
-
-        public override RoleResourceAccess Delete(RoleResourceAccess entity)
-        {
-            RoleResourceAccess dbEntity = this.Find(entity.Id.Value);
-
-            if (dbEntity != null)
-            {
-                dbEntity.ArchivedStamp = DateTime.Now;
-                dbContext.SaveChanges();
-
-                return dbEntity;
-            }
+            dbContext.RoleResourcesAccesses.AttachRange(entity);
+            dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override RoleResourceAccess Restore(Guid id)
+        public override RoleResourceAccess[] Delete(RoleResourceAccess[] entity)
         {
-            RoleResourceAccess entity = (from s in dbContext.RoleResourcesAccesses where s.Id == id select s).First();
+            entity = (
+                from e in this.FindAll().ToList()
+                join p in entity on e.Id equals p.Id.Value
+                select p
+            ).ToArray();
 
-            if (entity != null)
+            foreach (RoleResourceAccess dbEntity in entity)
             {
-                entity.ArchivedStamp = null;
-                dbContext.SaveChanges();
+                dbEntity.ArchivedStamp = DateTime.Now;
             }
+
+            dbContext.RoleResourcesAccesses.AttachRange(entity);
+            dbContext.SaveChanges();
+
+            return entity;
+        }
+
+        public override RoleResourceAccess[] Restore(Guid[] id)
+        {
+            RoleResourceAccess[] entity = (
+                from e in dbContext.RoleResourcesAccesses
+                where id.Contains(e.Id.Value)
+                select e
+            ).ToArray();
+
+            foreach (RoleResourceAccess e in entity)
+            {
+                e.ArchivedStamp = null;
+            }
+
+            dbContext.SaveChanges();
 
             return entity;
         }

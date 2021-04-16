@@ -208,15 +208,12 @@ namespace DORA.Access.Services
             //https://code-maze.com/using-refresh-tokens-in-asp-net-core-authentication/
 
             // cleanup old refresh tokens for user that have expired
-            IQueryable<JwtRefreshToken> expiredRefreshTokens = _jwtRefreshTokenRepository.FindBy(new Func<JwtRefreshToken, bool>[2] {
-                (r => r.UserName == username),
-                (r => r.ValidUntil < DateTime.Now)
-            });
+            IQueryable<JwtRefreshToken> expiredRefreshTokens = _jwtRefreshTokenRepository.FindBy(r =>
+                r.UserName == username
+                && r.ValidUntil < DateTime.Now
+            );
 
-            foreach (JwtRefreshToken expiredRefreshToken in expiredRefreshTokens)
-            {
-                _jwtRefreshTokenRepository.Delete(expiredRefreshToken);
-            }
+            _jwtRefreshTokenRepository.Delete(expiredRefreshTokens.ToArray());
 
             int jwtRefreshExpiresDays = int.Parse(Config["AppSettings:JwtRefreshExpiresDays"]);
 

@@ -31,7 +31,7 @@ namespace DORA.Access.Context.Repositories
             return dbContext.JwtRefreshTokens.FirstOrDefault(criteria);
         }
 
-        public override IQueryable<JwtRefreshToken> FindBy(Func<JwtRefreshToken, bool>[] criteria)
+        public override IQueryable<JwtRefreshToken> FindBy(Expression<Func<JwtRefreshToken, bool>> criteria)
         {
             // bool isAdmin = this.CurrentUser().IsAdmin.HasValue && this.CurrentUser().IsAdmin.Value;
 
@@ -40,41 +40,49 @@ namespace DORA.Access.Context.Repositories
             return base.FindBy(query, criteria);
         }
 
-        public override JwtRefreshToken Create(JwtRefreshToken entity)
+        public override JwtRefreshToken[] Create(JwtRefreshToken[] entity)
         {
-            dbContext.JwtRefreshTokens.Add(entity);
+            dbContext.JwtRefreshTokens.AddRange(entity);
             dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override JwtRefreshToken Update(JwtRefreshToken current, JwtRefreshToken previous)
+        public override JwtRefreshToken[] Update(JwtRefreshToken[] current, JwtRefreshToken[] previous)
         {
-            current.RefreshToken = previous.RefreshToken;
-            current.UserName = previous.UserName;
-            current.ValidUntil = previous.ValidUntil;
+            if (current.Length != previous.Length)
+                return null;
+
+            dbContext.JwtRefreshTokens.AttachRange(current);
+
+            for (int e = 0; e < current.Length; e++)
+            {
+                current[e].RefreshToken = previous[e].RefreshToken;
+                current[e].UserName = previous[e].UserName;
+                current[e].ValidUntil = previous[e].ValidUntil;
+            }
 
             dbContext.SaveChanges();
 
             return current;
         }
 
-        public override JwtRefreshToken SaveChanges(JwtRefreshToken entity)
+        public override JwtRefreshToken[] SaveChanges(JwtRefreshToken[] entity)
         {
-            dbContext.JwtRefreshTokens.Attach(entity);
+            dbContext.JwtRefreshTokens.AttachRange(entity);
             dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override JwtRefreshToken Delete(JwtRefreshToken entity)
+        public override JwtRefreshToken[] Delete(JwtRefreshToken[] entity)
         {
-            dbContext.JwtRefreshTokens.Remove(entity);
+            dbContext.JwtRefreshTokens.RemoveRange(entity);
             dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override JwtRefreshToken Restore(Guid id) { return null; }
+        public override JwtRefreshToken[] Restore(Guid[] id) { return null; }
     }
 }

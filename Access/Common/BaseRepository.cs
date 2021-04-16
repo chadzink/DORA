@@ -19,18 +19,22 @@ namespace DORA.Access.Common
 
         TEntity FindOneBy(Expression<Func<TEntity, bool>> criteria);
 
-        IQueryable<TEntity> FindBy(Func<TEntity, bool>[] criteria);
+        IQueryable<TEntity> FindBy(Expression<Func<TEntity, bool>> criteria);
     }
 
     public interface ICrudRepository<TEntity> : IViewRepository<TEntity>
     {
         TEntity Create(TEntity entity);
+        TEntity[] Create(TEntity[] entity);
 
         TEntity Update(TEntity dbEntity, TEntity entity);
+        TEntity[] Update(TEntity[] dbEntity, TEntity[] entity);
 
         TEntity SaveChanges(TEntity dbEntity);
+        TEntity[] SaveChanges(TEntity[] dbEntity);
 
         TEntity Delete(TEntity entity);
+        TEntity[] Delete(TEntity[] entity);
     }
 
     public interface IRepositoryView<TEntity> : IViewRepository<TEntity>
@@ -53,6 +57,7 @@ namespace DORA.Access.Common
         User CurrentUser();
 
         TEntity Restore(Guid id);
+        TEntity[] Restore(Guid[] id);
 
         bool CreateAccess(string controllerName, IEnumerable<Claim> roleClaims);
         bool ReadAccess(string controllerName, IEnumerable<Claim> roleClaims);
@@ -106,7 +111,7 @@ namespace DORA.Access.Common
 
         public abstract TEntity FindOneBy(Expression<Func<TEntity, bool>> criteria);
 
-        public abstract IQueryable<TEntity> FindBy(Func<TEntity, bool>[] criteria);
+        public abstract IQueryable<TEntity> FindBy(Expression<Func<TEntity, bool>> criteria);
 
         public void SetUser(ClaimsPrincipal user)
         {
@@ -157,14 +162,9 @@ namespace DORA.Access.Common
             return user;
         }
 
-        public IQueryable<TEntity> FindBy(IQueryable<TEntity> query, Func<TEntity, bool>[] criteria)
+        public IQueryable<TEntity> FindBy(IQueryable<TEntity> query, Expression<Func<TEntity, bool>> criteria)
         {
-            foreach (Func<TEntity, bool> criteriaFunc in criteria)
-            {
-                query = (IQueryable<TEntity>)query.Where(criteriaFunc);
-            }
-
-            return query;
+            return query.Where(criteria);
         }
 
         public bool ReadAccess(string resourceCode, IEnumerable<Claim> roleClaims)
@@ -204,15 +204,49 @@ namespace DORA.Access.Common
             : base(context, config)
         { }
 
-        public abstract TEntity Create(TEntity entity);
+        public TEntity Create(TEntity entity)
+        {
+            return this.Create(new TEntity[] { entity } ).First();
+        }
 
-        public abstract TEntity Update(TEntity dbEntity, TEntity entity);
+        public abstract TEntity[] Create(TEntity[] entity);
 
-        public abstract TEntity SaveChanges(TEntity dbEntity);
+        public TEntity Update(TEntity dbEntity, TEntity entity)
+        {
+            return this.Update(
+                new TEntity[] { dbEntity },
+                new TEntity[] { entity }
+            ).First();
+        }
 
-        public abstract TEntity Delete(TEntity entity);
+        public abstract TEntity[] Update(TEntity[] dbEntity, TEntity[] entity);
 
-        public abstract TEntity Restore(Guid id);
+        public TEntity SaveChanges(TEntity dbEntity)
+        {
+            return this.SaveChanges(
+                new TEntity[] { dbEntity }
+            ).First();
+        }
+
+        public abstract TEntity[] SaveChanges(TEntity[] dbEntity);
+
+        public TEntity Delete(TEntity entity)
+        {
+            return this.Delete(
+                new TEntity[] { entity }
+            ).First();
+        }
+
+        public abstract TEntity[] Delete(TEntity[] entity);
+
+        public TEntity Restore(Guid id)
+        {
+            return this.Restore(
+                new Guid[] { id }
+            ).First();
+        }
+
+        public abstract TEntity[] Restore(Guid[] id);
 
         public bool CreateAccess(string resourceCode, IEnumerable<Claim> roleClaims)
         {

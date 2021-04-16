@@ -40,44 +40,54 @@ namespace DORA.Access.Context.Repositories
             return dbContext.Resources.FirstOrDefault(criteria);
         }
 
-        public override IQueryable<Resource> FindBy(Func<Resource, bool>[] criteria)
+        public override IQueryable<Resource> FindBy(Expression<Func<Resource, bool>> criteria)
         {
             IQueryable<Resource> query = FindAll();
 
             return base.FindBy(query, criteria);
         }
 
-        public override Resource Create(Resource entity)
+        public override Resource[] Create(Resource[] entity)
         {
-            if (!entity.Id.HasValue)
-                entity.Id = Guid.NewGuid();
 
-            dbContext.Resources.Add(entity);
+            foreach (Resource e in entity)
+            {
+                if (!e.Id.HasValue)
+                    e.Id = Guid.NewGuid();
+            }
+
+            dbContext.Resources.AddRange(entity);
+            dbContext.SaveChanges();
 
             // add the default Resource Access records
-            foreach(string keyCode in this.DEFAULT_RESOURCE_ACCESS_KEYCODES)
+            foreach (Resource e in entity)
             {
-                ResourceAccess newRA = new ResourceAccess() {
-                    Id = Guid.NewGuid(),
-                    ResourceId = entity.Id.Value,
-                    KeyCode = keyCode,
-                };
-
-                dbContext.ResourceAccesses.Add(newRA);
-
-                // add the new resource to the admin role (check if exist too)
-                Role adminRole = dbContext.Roles.Where(r => r.NameCanonical == ADMIN_ROLE_NAME_CANONICAL).FirstOrDefault();
-
-                if (adminRole != null)
+                foreach (string keyCode in this.DEFAULT_RESOURCE_ACCESS_KEYCODES)
                 {
-                    RoleResourceAccess newRRA = new RoleResourceAccess() {
+                    ResourceAccess newRA = new ResourceAccess()
+                    {
                         Id = Guid.NewGuid(),
-                        RoleId = adminRole.Id.Value,
-                        ResourceId = entity.Id.Value,
-                        ResourceAccessId = newRA.Id.Value,
+                        ResourceId = e.Id.Value,
+                        KeyCode = keyCode,
                     };
 
-                    dbContext.RoleResourcesAccesses.Add(newRRA);
+                    dbContext.ResourceAccesses.Add(newRA);
+
+                    // add the new resource to the admin role (check if exist too)
+                    Role adminRole = dbContext.Roles.Where(r => r.NameCanonical == ADMIN_ROLE_NAME_CANONICAL).FirstOrDefault();
+
+                    if (adminRole != null)
+                    {
+                        RoleResourceAccess newRRA = new RoleResourceAccess()
+                        {
+                            Id = Guid.NewGuid(),
+                            RoleId = adminRole.Id.Value,
+                            ResourceId = e.Id.Value,
+                            ResourceAccessId = newRA.Id.Value,
+                        };
+
+                        dbContext.RoleResourcesAccesses.Add(newRRA);
+                    }
                 }
             }
 
@@ -115,87 +125,105 @@ namespace DORA.Access.Context.Repositories
             return true;
         }
 
-        public override Resource Update(Resource current, Resource previous)
+        public override Resource[] Update(Resource[] current, Resource[] previous)
         {
-            bool hasAccess = (from s in this.FindAll() where s.Id == previous.Id select s).FirstOrDefault() != null;
+            if (current.Length != previous.Length)
+                return null;
 
-            if (hasAccess)
+            // filter & sort out entities that the user doe not have access to
+            current = (
+                from e in this.FindAll().ToList()
+                join c in current on e.Id equals c.Id.Value
+                select c
+            ).OrderBy(c => c.Id).ToArray();
+
+            // filter and sort
+            previous = (
+                from c in current
+                join p in previous on c.Id.Value equals p.Id.Value
+                select p
+            ).OrderBy(c => c.Id).ToArray();
+
+            for (int e = 0; e < current.Length; e++)
             {
-                current.KeyCode = previous.KeyCode;
-                dbContext.SaveChanges();
+                current[e].KeyCode = previous[e].KeyCode;
             }
+
+            dbContext.Resources.AttachRange(current);
+            dbContext.SaveChanges();
 
             return current;
         }
 
-        public override Resource SaveChanges(Resource entity)
+        public override Resource[] SaveChanges(Resource[] entity)
         {
-            if (entity.Id.HasValue)
-            {
-                bool hasAccess = (from s in this.FindAll() where s.Id == entity.Id select s).FirstOrDefault() != null;
+            entity = (
+                from e in this.FindAll().ToList()
+                join p in entity on e.Id equals p.Id.Value
+                select p
+            ).ToArray();
 
-                if (hasAccess)
-                {
-                    dbContext.Resources.Attach(entity);
-                    dbContext.SaveChanges();
+            dbContext.Resources.AttachRange(entity);
+            dbContext.SaveChanges();
 
-                    return entity;
-                }
-            }
-
-            return null;
+            return entity;
         }
 
-        public override Resource Delete(Resource entity)
+        public override Resource[] Delete(Resource[] entity)
         {
-            Resource dbEntity = this.Find(entity.Id.Value);
+            entity = (
+                from e in this.FindAll().ToList()
+                join p in entity on e.Id equals p.Id.Value
+                select p
+            ).ToArray();
 
-            if (dbEntity != null)
+            foreach (Resource dbEntity in entity)
             {
                 dbEntity.ArchivedStamp = DateTime.Now;
-                dbContext.SaveChanges();
 
                 // achive the ResourceAccess & RoleResourceAccess entities linked to this resource
-                foreach(ResourceAccess dbRA in dbContext.ResourceAccesses.Where(ra => ra.ResourceId == dbEntity.Id.Value))
+                foreach (ResourceAccess dbRA in dbContext.ResourceAccesses.Where(ra => ra.ResourceId == dbEntity.Id.Value))
                 {
                     dbRA.ArchivedStamp = DateTime.Now;
-                    dbContext.SaveChanges();
 
-                    foreach(RoleResourceAccess dbRRA in dbContext.RoleResourcesAccesses.Where(rra => rra.ResourceAccessId == dbRA.Id.Value))
+                    foreach (RoleResourceAccess dbRRA in dbContext.RoleResourcesAccesses.Where(rra => rra.ResourceAccessId == dbRA.Id.Value))
                     {
                         dbRRA.ArchivedStamp = DateTime.Now;
-                        dbContext.SaveChanges();
                     }
                 }
-                
             }
 
-            return dbEntity;
+            dbContext.Resources.AttachRange(entity);
+            dbContext.SaveChanges();
+
+            return entity;
         }
 
-        public override Resource Restore(Guid id)
+        public override Resource[] Restore(Guid[] id)
         {
-            Resource entity = (from s in dbContext.Resources where s.Id == id select s).First();
+            Resource[] entity = (
+                from e in dbContext.Resources
+                where id.Contains(e.Id.Value)
+                select e
+            ).ToArray();
 
-
-            if (entity != null)
+            foreach (Resource e in entity)
             {
-                entity.ArchivedStamp = null;
-                dbContext.SaveChanges();
+                e.ArchivedStamp = null;
 
                 // remove achive the ResourceAccess & RoleResourceAccess entities linked to this resource
-                foreach (ResourceAccess dbRA in dbContext.ResourceAccesses.Where(ra => ra.ResourceId == entity.Id.Value))
+                foreach (ResourceAccess dbRA in dbContext.ResourceAccesses.Where(ra => ra.ResourceId == e.Id.Value))
                 {
                     dbRA.ArchivedStamp = null;
-                    dbContext.SaveChanges();
 
                     foreach (RoleResourceAccess dbRRA in dbContext.RoleResourcesAccesses.Where(rra => rra.ResourceAccessId == dbRA.Id.Value))
                     {
                         dbRRA.ArchivedStamp = null;
-                        dbContext.SaveChanges();
                     }
                 }
             }
+
+            dbContext.SaveChanges();
 
             return entity;
         }

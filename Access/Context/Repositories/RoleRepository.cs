@@ -49,30 +49,34 @@ namespace DORA.Access.Context.Repositories
                 return null;
         }
 
-        public override IQueryable<Role> FindBy(Func<Role, bool>[] criteria)
+        public override IQueryable<Role> FindBy(Expression<Func<Role, bool>> criteria)
         {
             IQueryable<Role> query = FindAll();
 
             return base.FindBy(query, criteria);
         }
 
-        public override Role Create(Role entity)
+        public override Role[] Create(Role[] entity)
         {
-            if (!entity.Id.HasValue)
-                entity.Id = Guid.NewGuid();
+            foreach (Role e in entity)
+            {
+                if (!e.Id.HasValue)
+                    e.Id = Guid.NewGuid();
+            }
 
-            dbContext.Roles.Add(entity);
+            dbContext.Roles.AddRange(entity);
+            dbContext.SaveChanges();
 
             // Add site to current user, if exist
             User currentUser = this.CurrentUser();
 
-            if (currentUser != null)
+            foreach (Role e in entity)
             {
                 dbContext.UserRoles.Add(new UserRole
                 {
                     Id = Guid.NewGuid(),
                     UserId = currentUser.Id.Value,
-                    RoleId = entity.Id.Value,
+                    RoleId = e.Id.Value,
                 });
             }
 
@@ -81,69 +85,80 @@ namespace DORA.Access.Context.Repositories
             return entity;
         }
 
-        public override Role Update(Role current, Role previous)
+        public override Role[] Update(Role[] current, Role[] previous)
         {
-            bool hasAccess = (from s in this.FindAll() where s.Id == previous.Id select s).FirstOrDefault() != null;
+            if (current.Length != previous.Length)
+                return null;
 
-            if (hasAccess)
+            // filter & sort out entities that the user doe not have access to
+            current = (
+                from e in this.FindAll().ToList()
+                join c in current on e.Id equals c.Id.Value
+                select c
+            ).OrderBy(c => c.Id).ToArray();
+
+            // filter and sort
+            previous = (
+                from c in current
+                join p in previous on c.Id.Value equals p.Id.Value
+                select p
+            ).OrderBy(c => c.Id).ToArray();
+
+
+            for (int e = 0; e < current.Length; e++)
             {
-                current.Label = previous.Label;
-                current.NameCanonical = previous.NameCanonical;
-                dbContext.SaveChanges();
+                current[e].Label = previous[e].Label;
+                current[e].NameCanonical = previous[e].NameCanonical;
             }
 
             return current;
         }
 
-        public override Role SaveChanges(Role entity)
+        public override Role[] SaveChanges(Role[] entity)
         {
-            if (entity.Id.HasValue)
-            {
-                bool hasAccess = (from s in this.FindAll() where s.Id == entity.Id select s).FirstOrDefault() != null;
+            entity = (
+                from e in this.FindAll().ToList()
+                join p in entity on e.Id equals p.Id.Value
+                select p
+            ).ToArray();
 
-                if (hasAccess)
-                {
-                    dbContext.Roles.Attach(entity);
-                    dbContext.SaveChanges();
-
-                    return entity;
-                }
-            }
-
-            return null;
-        }
-
-        public override Role Delete(Role entity)
-        {
-            bool hasAccess = (from s in this.FindAll()
-                              where s.Id == entity.Id
-                              select s).FirstOrDefault() != null;
-
-            if (hasAccess)
-            {
-                Role dbEntity = this.Find(entity.Id.Value);
-
-                if (dbEntity != null)
-                {
-                    dbEntity.ArchivedStamp = DateTime.Now;
-                    dbContext.SaveChanges();
-                }
-
-                return dbEntity;
-            }
+            dbContext.Roles.AttachRange(entity);
+            dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override Role Restore(Guid id)
+        public override Role[] Delete(Role[] entity)
         {
-            Role entity = (from s in dbContext.Roles where s.Id == id select s).First();
+            entity = (
+                from e in this.FindAll().ToList()
+                join p in entity on e.Id equals p.Id.Value
+                select p
+            ).ToArray();
 
-            if (entity != null)
+            foreach (Role dbEntity in entity)
             {
-                entity.ArchivedStamp = null;
-                dbContext.SaveChanges();
+                dbEntity.ArchivedStamp = DateTime.Now;
             }
+            dbContext.SaveChanges();
+
+            return entity;
+        }
+
+        public override Role[] Restore(Guid[] id)
+        {
+            Role[] entity = (
+                from e in dbContext.Roles
+                where id.Contains(e.Id.Value)
+                select e
+            ).ToArray();
+
+            foreach (Role e in entity)
+            {
+                e.ArchivedStamp = null;
+            }
+
+            dbContext.SaveChanges();
 
             return entity;
         }

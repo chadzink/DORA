@@ -31,80 +31,105 @@ namespace DORA.Access.Context.Repositories
             return dbContext.ResourceAccesses.FirstOrDefault(criteria);
         }
 
-        public override IQueryable<ResourceAccess> FindBy(Func<ResourceAccess, bool>[] criteria)
+        public override IQueryable<ResourceAccess> FindBy(Expression<Func<ResourceAccess, bool>> criteria)
         {
             IQueryable<ResourceAccess> query = FindAll();
 
             return base.FindBy(query, criteria);
         }
 
-        public override ResourceAccess Create(ResourceAccess entity)
+        public override ResourceAccess[] Create(ResourceAccess[] entity)
         {
-            if (!entity.Id.HasValue)
-                entity.Id = Guid.NewGuid();
+            foreach (ResourceAccess e in entity)
+            {
+                if (!e.Id.HasValue)
+                    e.Id = Guid.NewGuid();
+            }
 
-            dbContext.ResourceAccesses.Add(entity);
+            dbContext.ResourceAccesses.AddRange(entity);
             dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override ResourceAccess Update(ResourceAccess current, ResourceAccess previous)
+        public override ResourceAccess[] Update(ResourceAccess[] current, ResourceAccess[] previous)
         {
-            bool hasAccess = (from s in this.FindAll() where s.Id == previous.Id select s).FirstOrDefault() != null;
+            if (current.Length != previous.Length)
+                return null;
 
-            if (hasAccess)
+            // filter & sort out entities that the user doe not have access to
+            current = (
+                from e in this.FindAll().ToList()
+                join c in current on e.Id equals c.Id.Value
+                select c
+            ).OrderBy(c => c.Id).ToArray();
+
+            // filter and sort
+            previous = (
+                from c in current
+                join p in previous on c.Id.Value equals p.Id.Value
+                select p
+            ).OrderBy(c => c.Id).ToArray();
+
+            for (int e = 0; e < current.Length; e++)
             {
-                current.ResourceId = previous.ResourceId;
-                current.KeyCode = previous.KeyCode;
-
-                dbContext.SaveChanges();
+                current[e].ResourceId = previous[e].ResourceId;
+                current[e].KeyCode = previous[e].KeyCode;    
             }
+
+            dbContext.ResourceAccesses.AttachRange(current);
+            dbContext.SaveChanges();
 
             return current;
         }
 
-        public override ResourceAccess SaveChanges(ResourceAccess entity)
+        public override ResourceAccess[] SaveChanges(ResourceAccess[] entity)
         {
-            if (entity.Id.HasValue)
-            {
-                bool hasAccess = (from s in this.FindAll() where s.Id == entity.Id select s).FirstOrDefault() != null;
+            entity = (
+                from e in this.FindAll().ToList()
+                join p in entity on e.Id equals p.Id.Value
+                select p
+            ).ToArray();
 
-                if (hasAccess)
-                {
-                    dbContext.ResourceAccesses.Attach(entity);
-                    dbContext.SaveChanges();
+            dbContext.ResourceAccesses.AttachRange(entity);
+            dbContext.SaveChanges();
 
-                    return entity;
-                }
-            }
-
-            return null;
+            return entity;
         }
 
-        public override ResourceAccess Delete(ResourceAccess entity)
+        public override ResourceAccess[] Delete(ResourceAccess[] entity)
         {
-            ResourceAccess dbEntity = this.Find(entity.Id.Value);
+            entity = (
+                from e in this.FindAll().ToList()
+                join p in entity on e.Id equals p.Id.Value
+                select p
+            ).ToArray();
 
-            if (dbEntity != null)
+            foreach (ResourceAccess dbEntity in entity)
             {
                 dbEntity.ArchivedStamp = DateTime.Now;
-                dbContext.SaveChanges();
             }
 
-            return dbEntity;
+            dbContext.ResourceAccesses.AttachRange(entity);
+            dbContext.SaveChanges();
+
+            return entity;
         }
 
-        public override ResourceAccess Restore(Guid id)
+        public override ResourceAccess[] Restore(Guid[] id)
         {
-            ResourceAccess entity = (from s in dbContext.ResourceAccesses where s.Id == id select s).First();
+            ResourceAccess[] entity = (
+                from e in dbContext.ResourceAccesses
+                where id.Contains(e.Id.Value)
+                select e
+            ).ToArray();
 
-
-            if (entity != null)
+            foreach(ResourceAccess e in entity)
             {
-                entity.ArchivedStamp = null;
-                dbContext.SaveChanges();
+                e.ArchivedStamp = null;
             }
+
+            dbContext.SaveChanges();
 
             return entity;
         }

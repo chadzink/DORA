@@ -6,7 +6,8 @@
     <PackageId>DORA.Access</PackageId>
     <Authors>Chad Zink</Authors>
     <Description>The Web Application Programming Interface (API) for the .Net with React (DORA) framework.</Description>
-    <PackageVersion>1.0.2</PackageVersion>
+    <PackageVersion>1.0.7</PackageVersion>
+    <ReleaseVersion>1.0.1</ReleaseVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

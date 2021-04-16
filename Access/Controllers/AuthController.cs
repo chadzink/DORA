@@ -98,7 +98,7 @@ namespace Access.Controllers
                 // Add roles requested to user
                 RoleRepository roleRepository = new RoleRepository(_accessContext, this.Config);
 
-                IQueryable<Role> onlyUserRoles = roleRepository.FindBy(new Func<Role, bool>[1] { (r => newUser.RolesRequested.Contains(r.NameCanonical)) });
+                IQueryable<Role> onlyUserRoles = roleRepository.FindBy(r => newUser.RolesRequested.Contains(r.NameCanonical));
 
                 if (onlyUserRoles.Count() > 0)
                 {
@@ -441,8 +441,8 @@ namespace Access.Controllers
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         public IActionResult Revoke()
         {
-            _userRepository.SetUser(this.User);
-            User user = _userRepository.CurrentUser();
+            _jwtRefreshTokenRepository.SetUser(this.User);
+            User user = _jwtRefreshTokenRepository.CurrentUser();
 
             if (user == null)
             {
@@ -451,14 +451,8 @@ namespace Access.Controllers
             }
 
             // cleanup old refresh tokens for user that have expired
-            IQueryable<JwtRefreshToken> userRefreshTokens = _jwtRefreshTokenRepository.FindBy(new Func<JwtRefreshToken, bool>[1] {
-                (r => r.UserName == user.UserName)
-            });
-
-            foreach (JwtRefreshToken expiredRefreshToken in userRefreshTokens)
-            {
-                _jwtRefreshTokenRepository.Delete(expiredRefreshToken);
-            }
+            IQueryable<JwtRefreshToken> userRefreshTokens = _jwtRefreshTokenRepository.FindBy(r => r.UserName == user.UserName);
+            _jwtRefreshTokenRepository.Delete(userRefreshTokens.ToArray());
 
             return NoContent();
         }

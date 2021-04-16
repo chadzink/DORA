@@ -44,81 +44,105 @@ namespace DORA.Access.Context.Repositories
             return dbContext.UserRoles.FirstOrDefault(criteria);
         }
 
-        public override IQueryable<UserRole> FindBy(Func<UserRole, bool>[] criteria)
+        public override IQueryable<UserRole> FindBy(Expression<Func<UserRole, bool>> criteria)
         {
             IQueryable<UserRole> query = FindAll();
 
             return base.FindBy(query, criteria);
         }
 
-        public override UserRole Create(UserRole entity)
+        public override UserRole[] Create(UserRole[] entity)
         {
-            if (!entity.Id.HasValue)
-                entity.Id = Guid.NewGuid();
+            foreach (UserRole e in entity)
+            {
+                if (!e.Id.HasValue)
+                    e.Id = Guid.NewGuid();
+            }
 
-            dbContext.UserRoles.Add(entity);
+            dbContext.UserRoles.AddRange(entity);
             dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override UserRole Update(UserRole current, UserRole previous)
+        public override UserRole[] Update(UserRole[] current, UserRole[] previous)
         {
-            bool hasAccess = (from s in this.FindAll() where s.Id == previous.Id select s).FirstOrDefault() != null;
+            if (current.Length != previous.Length)
+                return null;
 
-            if (hasAccess)
+            // filter & sort out entities that the user doe not have access to
+            current = (
+                from e in this.FindAll().ToList()
+                join c in current on e.Id equals c.Id.Value
+                select c
+            ).OrderBy(c => c.Id).ToArray();
+
+            // filter and sort
+            previous = (
+                from c in current
+                join p in previous on c.Id.Value equals p.Id.Value
+                select p
+            ).OrderBy(c => c.Id).ToArray();
+
+            for (int e = 0; e < current.Length; e++)
             {
-                current.RoleId = previous.RoleId;
-                current.UserId = previous.UserId;
-
-                dbContext.SaveChanges();
+                current[e].RoleId = previous[e].RoleId;
+                current[e].UserId = previous[e].UserId;
             }
+
+            dbContext.UserRoles.AttachRange(current);
+            dbContext.SaveChanges();
 
             return current;
         }
 
-        public override UserRole SaveChanges(UserRole entity)
+        public override UserRole[] SaveChanges(UserRole[] entity)
         {
-            if (entity.Id.HasValue)
-            {
-                bool hasAccess = (from s in this.FindAll() where s.Id == entity.Id select s).FirstOrDefault() != null;
+            entity = (
+                from e in this.FindAll().ToList()
+                join p in entity on e.Id equals p.Id.Value
+                select p
+            ).ToArray();
 
-                if (hasAccess)
-                {
-                    dbContext.UserRoles.Attach(entity);
-                    dbContext.SaveChanges();
-
-                    return entity;
-                }
-            }
-
-            return null;
-        }
-
-        public override UserRole Delete(UserRole entity)
-        {
-            UserRole dbEntity = this.Find(entity.Id.Value);
-
-            if (dbEntity != null)
-            {
-                dbEntity.ArchivedStamp = DateTime.Now;
-                dbContext.SaveChanges();
-
-                return dbEntity;
-            }
+            dbContext.UserRoles.AttachRange(entity);
+            dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override UserRole Restore(Guid id)
+        public override UserRole[] Delete(UserRole[] entity)
         {
-            UserRole entity = (from s in dbContext.UserRoles where s.Id == id select s).First();
+            entity = (
+                from e in this.FindAll().ToList()
+                join p in entity on e.Id equals p.Id.Value
+                select p
+            ).ToArray();
 
-            if (entity != null)
+            foreach (UserRole dbEntity in entity)
             {
-                entity.ArchivedStamp = null;
-                dbContext.SaveChanges();
+                dbEntity.ArchivedStamp = DateTime.Now;
             }
+
+            dbContext.UserRoles.AttachRange(entity);
+            dbContext.SaveChanges();
+
+            return entity;
+        }
+
+        public override UserRole[] Restore(Guid[] id)
+        {
+            UserRole[] entity = (
+                from e in dbContext.UserRoles
+                where id.Contains(e.Id.Value)
+                select e
+            ).ToArray();
+
+            foreach (UserRole e in entity)
+            {
+                e.ArchivedStamp = null;
+            }
+
+            dbContext.SaveChanges();
 
             return entity;
         }

@@ -111,6 +111,9 @@ namespace DORA.Access.Context.Repositories
                 current[e].NameCanonical = previous[e].NameCanonical;
             }
 
+            dbContext.Roles.AttachRange(current);
+            dbContext.SaveChanges();
+
             return current;
         }
 

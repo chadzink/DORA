@@ -15,7 +15,7 @@ namespace DORA.Access.Context.Entities
         public Guid? Id { get; set; }
 
         [Column("key_code")]
-        [JsonProperty("key_code")]
+        [JsonProperty("keyCode")]
         public string KeyCode { get; set; }
 
         [Column("sql_object_name")]
@@ -23,19 +23,19 @@ namespace DORA.Access.Context.Entities
         public string SqlObjectName { get; set; }
 
         [Column("archived_stamp")]
-        [JsonProperty("archived_stamp")]
+        [JsonIgnore]
         public DateTime? ArchivedStamp { get; set; }
 
         [NotMapped]
-        [JsonProperty("resource_accesses")]
+        [JsonIgnore]
         public ICollection<ResourceAccess> ResourceAccesses { get; set; }
 
         [NotMapped]
-        [JsonProperty("role_resource_accesses")]
+        [JsonIgnore]
         public ICollection<RoleResourceAccess> RoleResourceAccesses { get; set; }
 
         [NotMapped]
-        [JsonProperty("included_resources")]
+        [JsonIgnore]
         public ICollection<IncludedResource> IncludedResources { get; set; }
     }
 }

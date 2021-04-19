@@ -15,7 +15,7 @@ namespace DORA.Access.Context.Entities
         public int Id { get; set; }
 
         [Column("refresh_token")]
-        [JsonProperty("refresh_token")]
+        [JsonProperty("refreshToken")]
         public string RefreshToken { get; set; }
 
         [Column("username")]

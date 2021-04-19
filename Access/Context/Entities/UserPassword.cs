@@ -19,7 +19,7 @@ namespace DORA.Access.Context.Entities
         public string Password { get; set; }
 
         [Column("user_id")]
-        [JsonProperty("user_id")]
+        [JsonIgnore]
         [ForeignKey(nameof(User))]
         public Guid UserId { get; set; }
 
@@ -27,11 +27,11 @@ namespace DORA.Access.Context.Entities
         public User User { get; set; }
 
         [Column("created_stamp")]
-        [JsonProperty("created_stamp")]
+        [JsonIgnore]
         public DateTime? CreatedStamp { get; set; }
 
         [Column("archived_stamp")]
-        [JsonProperty("archived_stamp")]
+        [JsonIgnore]
         public DateTime? ArchivedStamp { get; set; }
     }
 }

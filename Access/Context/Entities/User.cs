@@ -19,7 +19,7 @@ namespace DORA.Access.Context.Entities
         public string UserName { get; set; }
 
         [Column("display_name")]
-        [JsonProperty("display_name")]
+        [JsonProperty("displayName")]
         public string DisplayName { get; set; }
 
         [Column("first")]
@@ -39,19 +39,19 @@ namespace DORA.Access.Context.Entities
         public string Phone { get; set; }
 
         [Column("first_login_stamp")]
-        [JsonProperty("first_login_stamp")]
+        [JsonProperty("firstLoginStamp")]
         public DateTime? FirstLoginStamp { get; set; }
 
         [Column("last_login_stamp")]
-        [JsonProperty("last_login_stamp")]
+        [JsonProperty("lastLoginStamp")]
         public DateTime? LastLoginStamp { get; set; }
 
         [Column("external_id")]
-        [JsonProperty("external_id")]
+        [JsonProperty("externalId")]
         public string ExternalId { get; set; }
 
         [Column("archived_stamp")]
-        [JsonProperty("archived_stamp")]
+        [JsonIgnore]
         public DateTime? ArchivedStamp { get; set; }
 
         [Column("user_password_id")]
@@ -59,7 +59,7 @@ namespace DORA.Access.Context.Entities
         public Guid CurrentUserPasswordId { get; set; }
 
         [Column("needs_password_change")]
-        [JsonProperty("needs_password_change")]
+        [JsonIgnore]
         public bool NeedsPasswordChange { get; set; }
 
         [Column("enabled")]
@@ -67,39 +67,39 @@ namespace DORA.Access.Context.Entities
         public Int16 enabled { get; set; }
 
         [Column("requested_password_reset")]
-        [JsonProperty("requested_password_reset")]
+        [JsonProperty("requestedPasswordReset")]
         public DateTime? RequestedPasswordReset { get; set; }
 
         [Column("password_reset_token")]
-        [JsonProperty("password_reset_token")]
+        [JsonProperty("passwordResetToken")]
         public Guid? PasswordResetToken { get; set; }
 
         [Column("created_stamp")]
-        [JsonProperty("created_stamp")]
+        [JsonProperty("createdStamp")]
         public DateTime? CreatedStamp { get; set; }
 
         [Column("last_updated_stamp")]
-        [JsonProperty("last_updated_stamp")]
+        [JsonProperty("lastUpdatedStamp")]
         public DateTime? LastUpdatedStamp { get; set; }
 
         [NotMapped]
-        [JsonProperty("access_token")]
+        [JsonProperty("accessToken")]
         public string JwtToken { get; set; }
 
         [NotMapped]
-        [JsonProperty("token_exp")]
+        [JsonProperty("tokenExp")]
         public DateTime JwtTokenExpiresOn { get; set; }
 
         [NotMapped]
-        [JsonProperty("refresh_token")]
+        [JsonProperty("refreshToken")]
         public string RefreshJwtToken { get; set; }
 
         [NotMapped]
-        [JsonProperty("refresh_token_exp")]
+        [JsonProperty("refreshTokenExp")]
         public DateTime RefreshJwtTokenExpiresOn { get; set; }
 
         [NotMapped]
-        [JsonProperty("user_roles")]
+        [JsonIgnore]
         public ICollection<UserRole> UserRoles { get; set; }
     }
 }

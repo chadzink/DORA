@@ -19,19 +19,19 @@ namespace DORA.Access.Context.Entities
         public string Label { get; set; }
 
         [Column("key_code")]
-        [JsonProperty("key_code")]
+        [JsonProperty("keyCode")]
         public string KeyCode { get; set; }
 
         [Column("archived_stamp")]
-        [JsonProperty("archived_stamp")]
+        [JsonIgnore]
         public DateTime? ArchivedStamp { get; set; }
 
         [NotMapped]
-        [JsonProperty("user_roles")]
+        [JsonIgnore]
         public ICollection<UserRole> UserRoles { get; set; }
 
         [NotMapped]
-        [JsonProperty("role_resources_accesses")]
+        [JsonIgnore]
         public ICollection<RoleResourceAccess> RoleResourcesAccess { get; set; }
     }
 }

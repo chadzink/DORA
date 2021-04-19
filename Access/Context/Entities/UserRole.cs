@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace DORA.Access.Context.Entities
 {
-    [Table("access_user_roles")]
+    [Table("user_roles")]
     public class UserRole
     {
         [Key]

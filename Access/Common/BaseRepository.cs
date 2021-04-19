@@ -15,6 +15,10 @@ namespace DORA.Access.Common
     {
         IQueryable<TEntity> FindAll();
 
+        IQueryable<TEntity> FindAllWithIncludes(string[] collectionNames);
+
+        List<IncludedResource> IncludedResources(string resourceKeyCode);
+
         TEntity Find(Guid id);
 
         TEntity FindOneBy(Expression<Func<TEntity, bool>> criteria);
@@ -107,6 +111,18 @@ namespace DORA.Access.Common
 
         public abstract IQueryable<TEntity> FindAll();
 
+        public abstract IQueryable<TEntity> FindAllWithIncludes(string[] collectionNames);
+
+        public List<IncludedResource> IncludedResources(string resourceKeyCode)
+        {
+            return (
+                from ir in userContext.IncludedResources
+                join r in userContext.Resources on ir.ResourceId equals r.Id.Value
+                where r.KeyCode == resourceKeyCode
+                select ir
+            ).ToList();
+        }
+
         public abstract TEntity Find(Guid id);
 
         public abstract TEntity FindOneBy(Expression<Func<TEntity, bool>> criteria);
@@ -176,7 +192,7 @@ namespace DORA.Access.Common
                               join rr in _userContext.Resources on rra.ResourceId equals rr.Id
                               join r in _userContext.Roles on rra.RoleId equals r.Id
                               where
-                                  r.NameCanonical == roleClaim.Value &&
+                                  r.KeyCode == roleClaim.Value &&
                                   ra.KeyCode == "READ" &&
                                   rr.KeyCode == resourceCode
                               select rra).FirstOrDefault();
@@ -257,7 +273,7 @@ namespace DORA.Access.Common
                                 join rr in userContext.Resources on rra.ResourceId equals rr.Id
                                 join r in userContext.Roles on rra.RoleId equals r.Id
                                 where
-                                    r.NameCanonical == roleClaim.Value &&
+                                    r.KeyCode == roleClaim.Value &&
                                     ra.KeyCode == "CREATE" &&
                                     rr.KeyCode == resourceCode
                                 select rra).FirstOrDefault();
@@ -276,7 +292,7 @@ namespace DORA.Access.Common
                                 join rr in userContext.Resources on rra.ResourceId equals rr.Id
                                 join r in userContext.Roles on rra.RoleId equals r.Id
                                 where
-                                    r.NameCanonical == roleClaim.Value &&
+                                    r.KeyCode == roleClaim.Value &&
                                     ra.KeyCode == "UPDATE" &&
                                     rr.KeyCode == resourceCode
                               select rra).FirstOrDefault();
@@ -295,7 +311,7 @@ namespace DORA.Access.Common
                                 join rr in userContext.Resources on rra.ResourceId equals rr.Id
                                 join r in userContext.Roles on rra.RoleId equals r.Id
                                 where
-                                    r.NameCanonical == roleClaim.Value &&
+                                    r.KeyCode == roleClaim.Value &&
                                     ra.KeyCode == "DELETE" &&
                                     rr.KeyCode == resourceCode
                               select rra).FirstOrDefault();

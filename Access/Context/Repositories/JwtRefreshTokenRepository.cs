@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using DORA.Access.Context.Entities;
 using DORA.Access.Common;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 
 namespace DORA.Access.Context.Repositories
 {
@@ -17,6 +18,16 @@ namespace DORA.Access.Context.Repositories
         public override IQueryable<JwtRefreshToken> FindAll()
         {
             return from s in dbContext.JwtRefreshTokens select s;
+        }
+
+        public override IQueryable<JwtRefreshToken> FindAllWithIncludes(string[] collectionNames)
+        {
+            IQueryable<JwtRefreshToken> query = this.FindAll();
+
+            foreach(string collectionName in collectionNames)
+                query = query.Include(collectionName);
+                
+            return query;
         }
 
         public JwtRefreshToken Find(int id)

@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using DORA.Access.Context.Entities;
 using DORA.Access.Common;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 
 namespace DORA.Access.Context.Repositories
 {
@@ -32,6 +33,16 @@ namespace DORA.Access.Context.Repositories
             return from s in dbContext.RoleResourcesAccesses
                    where s.ArchivedStamp == null
                    select s;
+        }
+
+        public override IQueryable<RoleResourceAccess> FindAllWithIncludes(string[] collectionNames)
+        {
+            IQueryable<RoleResourceAccess> query = this.FindAll();
+
+            foreach(string collectionName in collectionNames)
+                query = query.Include(collectionName);
+                
+            return query;
         }
 
         public override RoleResourceAccess Find(Guid id)

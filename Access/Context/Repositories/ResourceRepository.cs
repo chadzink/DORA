@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using DORA.Access.Context.Entities;
 using DORA.Access.Common;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 
 namespace DORA.Access.Context.Repositories
 {
@@ -28,6 +29,16 @@ namespace DORA.Access.Context.Repositories
             return from s in dbContext.Resources
                    where s.ArchivedStamp == null
                    select s;
+        }
+
+        public override IQueryable<Resource> FindAllWithIncludes(string[] collectionNames)
+        {
+            IQueryable<Resource> query = this.FindAll();
+
+            foreach(string collectionName in collectionNames)
+                query = query.Include(collectionName);
+                
+            return query;
         }
 
         public override Resource Find(Guid id)
@@ -74,7 +85,7 @@ namespace DORA.Access.Context.Repositories
                     dbContext.ResourceAccesses.Add(newRA);
 
                     // add the new resource to the admin role (check if exist too)
-                    Role adminRole = dbContext.Roles.Where(r => r.NameCanonical == ADMIN_ROLE_NAME_CANONICAL).FirstOrDefault();
+                    Role adminRole = dbContext.Roles.Where(r => r.KeyCode == ADMIN_ROLE_NAME_CANONICAL).FirstOrDefault();
 
                     if (adminRole != null)
                     {
@@ -108,7 +119,7 @@ namespace DORA.Access.Context.Repositories
             foreach(ResourceAccess resourceAccess in accessResources)
             {
                 IQueryable<Role> addRoles = dbContext.Roles
-                    .Where(r => RoleNamesCanonical.Contains(r.NameCanonical));
+                    .Where(r => RoleNamesCanonical.Contains(r.KeyCode));
 
                 foreach(Role role in addRoles)
                 {

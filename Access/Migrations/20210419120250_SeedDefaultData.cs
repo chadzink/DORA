@@ -2,7 +2,7 @@
 
 namespace Access.Migrations
 {
-    public partial class InitalSeedData : Migration
+    public partial class SeedDefaultData : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {

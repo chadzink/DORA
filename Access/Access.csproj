@@ -6,7 +6,7 @@
     <PackageId>DORA.Access</PackageId>
     <Authors>Chad Zink</Authors>
     <Description>The Web Application Programming Interface (API) for the .Net with React (DORA) framework.</Description>
-    <PackageVersion>1.0.8</PackageVersion>
+    <PackageVersion>1.0.19</PackageVersion>
     <ReleaseVersion>1.0.1</ReleaseVersion>
   </PropertyGroup>
 

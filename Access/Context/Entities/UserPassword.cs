@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace DORA.Access.Context.Entities
 {
-    [Table("access_user_passwords")]
+    [Table("user_passwords")]
     public class UserPassword
     {
         [Key]

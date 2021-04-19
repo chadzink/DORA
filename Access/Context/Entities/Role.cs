@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace DORA.Access.Context.Entities
 {
-    [Table("access_roles")]
+    [Table("roles")]
     public class Role
     {
         [Key]
@@ -18,20 +18,20 @@ namespace DORA.Access.Context.Entities
         [JsonPropertyName("label")]
         public string Label { get; set; }
 
-        [Column("name_canonical")]
-        [JsonPropertyName("name_canonical")]
-        public string NameCanonical { get; set; }
+        [Column("key_code")]
+        [JsonPropertyName("key_code")]
+        public string KeyCode { get; set; }
 
         [Column("archived_stamp")]
         [JsonPropertyName("archived_stamp")]
         public DateTime? ArchivedStamp { get; set; }
 
         [NotMapped]
-        [JsonIgnore]
+        [JsonPropertyName("user_roles")]
         public ICollection<UserRole> UserRoles { get; set; }
 
         [NotMapped]
-        [JsonIgnore]
+        [JsonPropertyName("role_resources_accesses")]
         public ICollection<RoleResourceAccess> RoleResourcesAccess { get; set; }
     }
 }

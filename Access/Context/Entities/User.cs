@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 namespace DORA.Access.Context.Entities
 {
-    [Table("access_users")]
+    [Table("users")]
     public class User
     {
         [Key]
@@ -99,7 +99,7 @@ namespace DORA.Access.Context.Entities
         public DateTime RefreshJwtTokenExpiresOn { get; set; }
 
         [NotMapped]
-        [JsonIgnore]
+        [JsonPropertyName("user_roles")]
         public ICollection<UserRole> UserRoles { get; set; }
     }
 }

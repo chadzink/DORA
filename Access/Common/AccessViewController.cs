@@ -80,6 +80,27 @@ namespace DORA.Access.Common
         }
 
         /// <summary>
+        ///     Get include options for the Entity
+        /// </summary>
+        /// <remarks>
+        ///     Gets the options for includes the Entity records.
+        /// </remarks>
+        /// <response code="201">JSON with collection names</response>
+        /// <response code="403">Invalid Access In Resource Manager</response>
+        [HttpGet("includes")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public IActionResult IncludedResources()
+        {
+            // check READ role access to this resource
+            if (this.NoRead)
+                return this.InvalidAccess();
+
+            List<IncludedResource> includedResources = DataRepository.IncludedResources(this._resourceCode).ToList();
+
+            return Ok(new JsonData<IncludedResource>(includedResources).Serialize());
+        }
+
+        /// <summary>
         ///     List Entities that met criteria for filter
         /// </summary>
         /// <remarks>
@@ -89,7 +110,11 @@ namespace DORA.Access.Common
         /// <response code="403">Invalid Access In Resource Manager</response>
         [HttpPost("filter")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult ApplyFilter([FromBody] List<FilterField> filters = null, [FromQuery] int page = 1, [FromQuery] int size = 25)
+        public IActionResult ApplyFilter(
+            [FromBody] List<FilterField> filters = null,
+            [FromQuery] List<string> includes = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int size = 25)
         {
             // check READ role access to this resource
             if (this.NoRead)
@@ -98,7 +123,9 @@ namespace DORA.Access.Common
             if (this.IncludeUser)
                 _dataRepository.SetUser(this.User);
 
-            IQueryable<TEntity> query = DataRepository.FindAll();
+            IQueryable<TEntity> query = includes != null
+                ? DataRepository.FindAllWithIncludes(includes.ToArray())
+                : DataRepository.FindAll();
 
             User user = this.IncludeUser ? DataRepository.CurrentUser() : null;
 
@@ -119,7 +146,10 @@ namespace DORA.Access.Common
         /// <response code="403">Invalid Access In Resource Manager</response>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult Get([FromQuery] int page = 1, [FromQuery] int size = 25/*, [FromQuery] string order = "Label ASC" */)
+        public IActionResult Get(
+            [FromQuery] List<string> includes = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int size = 25/*, [FromQuery] string order = "Label ASC" */)
         {
             // check READ role access to this resource
             if (this.NoRead)
@@ -128,7 +158,10 @@ namespace DORA.Access.Common
             if (this.IncludeUser)
                 DataRepository.SetUser(this.User);
 
-            IQueryable<TEntity> query = DataRepository.FindAll();
+            IQueryable<TEntity> query = includes != null
+                ? DataRepository.FindAllWithIncludes(includes.ToArray())
+                : DataRepository.FindAll();
+
             PagedResults<TEntity> paged = Paging<TEntity>.Page(query, page, size/*, order*/);
 
             List<TEntity> entities = paged != null && paged.query != null ? paged.query.ToList() : null;

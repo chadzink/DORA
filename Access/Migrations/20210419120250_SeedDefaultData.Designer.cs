@@ -10,16 +10,43 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Access.Migrations
 {
     [DbContext(typeof(AccessContext))]
-    [Migration("20210410150644_InitalSeedData")]
-    partial class InitalSeedData
+    [Migration("20210419120250_SeedDefaultData")]
+    partial class SeedDefaultData
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
-                .HasAnnotation("ProductVersion", "5.0.4")
+                .HasAnnotation("ProductVersion", "5.0.5")
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+            modelBuilder.Entity("DORA.Access.Context.Entities.IncludedResource", b =>
+                {
+                    b.Property<Guid>("ResourceId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("resource_id");
+
+                    b.Property<Guid>("IncludedRecourceId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("included_recource_id");
+
+                    b.Property<string>("CollectionName")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("collection_name");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid?>("Id")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.HasKey("ResourceId", "IncludedRecourceId");
+
+                    b.ToTable("included_resources");
+                });
 
             modelBuilder.Entity("DORA.Access.Context.Entities.JwtRefreshToken", b =>
                 {
@@ -61,9 +88,13 @@ namespace Access.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("key_code");
 
+                    b.Property<string>("SqlObjectName")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("sql_object_name");
+
                     b.HasKey("Id");
 
-                    b.ToTable("access_resources");
+                    b.ToTable("resources");
                 });
 
             modelBuilder.Entity("DORA.Access.Context.Entities.ResourceAccess", b =>
@@ -89,7 +120,7 @@ namespace Access.Migrations
 
                     b.HasIndex("ResourceId");
 
-                    b.ToTable("access_resource_access");
+                    b.ToTable("resource_accesses");
                 });
 
             modelBuilder.Entity("DORA.Access.Context.Entities.Role", b =>
@@ -103,17 +134,27 @@ namespace Access.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("archived_stamp");
 
+                    b.Property<string>("KeyCode")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("key_code");
+
                     b.Property<string>("Label")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("label");
 
-                    b.Property<string>("NameCanonical")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("name_canonical");
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
-                    b.ToTable("access_roles");
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("roles");
                 });
 
             modelBuilder.Entity("DORA.Access.Context.Entities.RoleResourceAccess", b =>
@@ -144,7 +185,7 @@ namespace Access.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("access_role_resource_access");
+                    b.ToTable("role_resource_accesses");
                 });
 
             modelBuilder.Entity("DORA.Access.Context.Entities.User", b =>
@@ -224,7 +265,7 @@ namespace Access.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("access_users");
+                    b.ToTable("users");
                 });
 
             modelBuilder.Entity("DORA.Access.Context.Entities.UserPassword", b =>
@@ -254,7 +295,7 @@ namespace Access.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("access_user_passwords");
+                    b.ToTable("user_passwords");
                 });
 
             modelBuilder.Entity("DORA.Access.Context.Entities.UserRole", b =>
@@ -279,7 +320,18 @@ namespace Access.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("access_user_roles");
+                    b.ToTable("user_roles");
+                });
+
+            modelBuilder.Entity("DORA.Access.Context.Entities.IncludedResource", b =>
+                {
+                    b.HasOne("DORA.Access.Context.Entities.Resource", "Resource")
+                        .WithMany("IncludedResources")
+                        .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Resource");
                 });
 
             modelBuilder.Entity("DORA.Access.Context.Entities.ResourceAccess", b =>
@@ -291,6 +343,17 @@ namespace Access.Migrations
                         .IsRequired();
 
                     b.Navigation("Resource");
+                });
+
+            modelBuilder.Entity("DORA.Access.Context.Entities.Role", b =>
+                {
+                    b.HasOne("DORA.Access.Context.Entities.Role", null)
+                        .WithMany("Users")
+                        .HasForeignKey("RoleId");
+
+                    b.HasOne("DORA.Access.Context.Entities.User", null)
+                        .WithMany("Roles")
+                        .HasForeignKey("UserId");
                 });
 
             modelBuilder.Entity("DORA.Access.Context.Entities.RoleResourceAccess", b =>
@@ -352,6 +415,8 @@ namespace Access.Migrations
 
             modelBuilder.Entity("DORA.Access.Context.Entities.Resource", b =>
                 {
+                    b.Navigation("IncludedResources");
+
                     b.Navigation("ResourceAccesses");
 
                     b.Navigation("RoleResourceAccesses");
@@ -367,10 +432,14 @@ namespace Access.Migrations
                     b.Navigation("RoleResourcesAccess");
 
                     b.Navigation("UserRoles");
+
+                    b.Navigation("Users");
                 });
 
             modelBuilder.Entity("DORA.Access.Context.Entities.User", b =>
                 {
+                    b.Navigation("Roles");
+
                     b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618

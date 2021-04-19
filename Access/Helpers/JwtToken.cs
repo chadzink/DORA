@@ -41,7 +41,7 @@ namespace DORA.Access.Helpers
             List<Role> roles = JwtToken.GetRolesForUser(dbContext, user);
             foreach (Role role in roles)
             {
-                subjectClaims.Add(new Claim(ClaimTypes.Role, role.NameCanonical));
+                subjectClaims.Add(new Claim(ClaimTypes.Role, role.KeyCode));
             }
 
             SecurityTokenDescriptor tokenDescriptor = new SecurityTokenDescriptor

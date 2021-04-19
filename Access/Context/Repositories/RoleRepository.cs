@@ -4,6 +4,7 @@ using System.Linq.Expressions;
 using DORA.Access.Context.Entities;
 using DORA.Access.Common;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 
 namespace DORA.Access.Context.Repositories
 {
@@ -26,6 +27,16 @@ namespace DORA.Access.Context.Repositories
                        select r;
             else
                 return null;
+        }
+
+        public override IQueryable<Role> FindAllWithIncludes(string[] collectionNames)
+        {
+            IQueryable<Role> query = this.FindAll();
+
+            foreach(string collectionName in collectionNames)
+                query = query.Include(collectionName);
+                
+            return query;
         }
 
         public override Role Find(Guid id)
@@ -108,7 +119,7 @@ namespace DORA.Access.Context.Repositories
             for (int e = 0; e < current.Length; e++)
             {
                 current[e].Label = previous[e].Label;
-                current[e].NameCanonical = previous[e].NameCanonical;
+                current[e].KeyCode = previous[e].KeyCode;
             }
 
             dbContext.Roles.AttachRange(current);

@@ -6,8 +6,8 @@ using System.Text.Json.Serialization;
 
 namespace DORA.Access.Context.Entities
 {
-    [Table("resource_accesses")]
-    public class ResourceAccess
+    [Table("included_resources")]
+    public class IncludedResource
     {
         [Key]
         [Column("id")]
@@ -22,20 +22,21 @@ namespace DORA.Access.Context.Entities
         [JsonIgnore]
         public Resource Resource { get; set; }
 
-        [Column("key_code")]
-        [JsonPropertyName("key_code")]
-        public string KeyCode { get; set; }
+        [Column("included_recource_id")]
+        [JsonPropertyName("included_recource_id")]
+        [ForeignKey(nameof(IncludedRecourceId))]
+        public Guid IncludedRecourceId { get; set; }
 
-        [Column("archived_stamp")]
-        [JsonPropertyName("archived_stamp")]
-        public DateTime? ArchivedStamp { get; set; }
-
+        [JsonIgnore]
         [NotMapped]
-        [JsonPropertyName("resources")]
-        public ICollection<Resource> Resources { get; set; }
+        public Resource IncludedRecource { get; set; }
 
-        [NotMapped]
-        [JsonPropertyName("role_resource_accesses")]
-        public ICollection<RoleResourceAccess> RoleResourceAccesses { get; set; }
+        [Column("collection_name")]
+        [JsonPropertyName("collection_name")]
+        public string CollectionName { get; set; }
+
+        [Column("description")]
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
     }
 }

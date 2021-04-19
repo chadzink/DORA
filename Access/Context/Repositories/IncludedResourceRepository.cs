@@ -8,23 +8,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DORA.Access.Context.Repositories
 {
-    public class ResourceAccessRepository : Repository<AccessContext, ResourceAccess>
+    public class IncludedResourceRepository : Repository<AccessContext, IncludedResource>
     {
-        public ResourceAccessRepository(AccessContext context, IConfiguration config)
+        public IncludedResourceRepository(AccessContext context, IConfiguration config)
             : base(context, config)
         {
         }
 
-        public override IQueryable<ResourceAccess> FindAll()
+        public override IQueryable<IncludedResource> FindAll()
         {
-            return from s in dbContext.ResourceAccesses
-                   where s.ArchivedStamp == null
-                   select s;
+            return from s in dbContext.IncludedResources select s;
         }
 
-        public override IQueryable<ResourceAccess> FindAllWithIncludes(string[] collectionNames)
+        public override IQueryable<IncludedResource> FindAllWithIncludes(string[] collectionNames)
         {
-            IQueryable<ResourceAccess> query = this.FindAll();
+            IQueryable<IncludedResource> query = this.FindAll();
 
             foreach(string collectionName in collectionNames)
                 query = query.Include(collectionName);
@@ -32,38 +30,38 @@ namespace DORA.Access.Context.Repositories
             return query;
         }
 
-        public override ResourceAccess Find(Guid id)
+        public override IncludedResource Find(Guid id)
         {
             return this.FindOneBy(e => e.Id == id);
         }
 
-        public override ResourceAccess FindOneBy(Expression<Func<ResourceAccess, bool>> criteria)
+        public override IncludedResource FindOneBy(Expression<Func<IncludedResource, bool>> criteria)
         {
-            return dbContext.ResourceAccesses.FirstOrDefault(criteria);
+            return dbContext.IncludedResources.FirstOrDefault(criteria);
         }
 
-        public override IQueryable<ResourceAccess> FindBy(Expression<Func<ResourceAccess, bool>> criteria)
+        public override IQueryable<IncludedResource> FindBy(Expression<Func<IncludedResource, bool>> criteria)
         {
-            IQueryable<ResourceAccess> query = FindAll();
+            IQueryable<IncludedResource> query = FindAll();
 
             return base.FindBy(query, criteria);
         }
 
-        public override ResourceAccess[] Create(ResourceAccess[] entity)
+        public override IncludedResource[] Create(IncludedResource[] entity)
         {
-            foreach (ResourceAccess e in entity)
+            foreach (IncludedResource e in entity)
             {
                 if (!e.Id.HasValue)
                     e.Id = Guid.NewGuid();
             }
 
-            dbContext.ResourceAccesses.AddRange(entity);
+            dbContext.IncludedResources.AddRange(entity);
             dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override ResourceAccess[] Update(ResourceAccess[] current, ResourceAccess[] previous)
+        public override IncludedResource[] Update(IncludedResource[] current, IncludedResource[] previous)
         {
             if (current.Length != previous.Length)
                 return null;
@@ -85,16 +83,18 @@ namespace DORA.Access.Context.Repositories
             for (int e = 0; e < current.Length; e++)
             {
                 current[e].ResourceId = previous[e].ResourceId;
-                current[e].KeyCode = previous[e].KeyCode;    
+                current[e].IncludedRecourceId = previous[e].IncludedRecourceId;
+                current[e].CollectionName = previous[e].CollectionName;
+                current[e].Description = previous[e].Description;
             }
 
-            dbContext.ResourceAccesses.AttachRange(current);
+            dbContext.IncludedResources.AttachRange(current);
             dbContext.SaveChanges();
 
             return current;
         }
 
-        public override ResourceAccess[] SaveChanges(ResourceAccess[] entity)
+        public override IncludedResource[] SaveChanges(IncludedResource[] entity)
         {
             entity = (
                 from e in this.FindAll().ToList()
@@ -102,13 +102,13 @@ namespace DORA.Access.Context.Repositories
                 select p
             ).ToArray();
 
-            dbContext.ResourceAccesses.AttachRange(entity);
+            dbContext.IncludedResources.AttachRange(entity);
             dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override ResourceAccess[] Delete(ResourceAccess[] entity)
+        public override IncludedResource[] Delete(IncludedResource[] entity)
         {
             entity = (
                 from e in this.FindAll().ToList()
@@ -116,33 +116,15 @@ namespace DORA.Access.Context.Repositories
                 select p
             ).ToArray();
 
-            foreach (ResourceAccess dbEntity in entity)
-            {
-                dbEntity.ArchivedStamp = DateTime.Now;
-            }
-
-            dbContext.ResourceAccesses.AttachRange(entity);
+            dbContext.IncludedResources.RemoveRange(entity);
             dbContext.SaveChanges();
 
             return entity;
         }
 
-        public override ResourceAccess[] Restore(Guid[] id)
+        public override IncludedResource[] Restore(Guid[] id)
         {
-            ResourceAccess[] entity = (
-                from e in dbContext.ResourceAccesses
-                where id.Contains(e.Id.Value)
-                select e
-            ).ToArray();
-
-            foreach(ResourceAccess e in entity)
-            {
-                e.ArchivedStamp = null;
-            }
-
-            dbContext.SaveChanges();
-
-            return entity;
+            return null;
         }
     }
 }

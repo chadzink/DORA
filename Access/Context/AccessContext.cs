@@ -60,6 +60,15 @@ namespace DORA.Access.Context
                     .HasForeignKey(ur => ur.ResourceAccessId)
                     .OnDelete(DeleteBehavior.NoAction);
             });
+
+            modelBuilder.Entity<IncludedResource>(entity => {
+                entity.HasKey(lr => new { lr.ResourceId, lr.IncludedRecourceId });
+
+                entity.HasOne(lr => lr.Resource)
+                    .WithMany(r => r.IncludedResources)
+                    .HasForeignKey(lr => lr.ResourceId)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
         }
 
         internal static AccessContext CreateContext()
@@ -73,6 +82,7 @@ namespace DORA.Access.Context
         public static bool AddAccessResource(
             IConfiguration config,
             string keyCode,
+            string sqlObjectName,
             string[] RoleNamesCanonical = null,
             string[] WithAccessKeys = null
         )
@@ -83,7 +93,13 @@ namespace DORA.Access.Context
             );
             
             // this will add the resource and assign to admin role
-            Resource newResource = resourceRepo.Create(new Resource { KeyCode = keyCode });
+            Resource newResource = resourceRepo.Create(
+                new Resource
+                {
+                    KeyCode = keyCode,
+                    SqlObjectName = sqlObjectName
+                }
+            );
 
             if (RoleNamesCanonical == null)
                 return true;
@@ -105,5 +121,6 @@ namespace DORA.Access.Context
         public DbSet<RoleResourceAccess> RoleResourcesAccesses { get; set; }
         public DbSet<ResourceAccess> ResourceAccesses { get; set; }
         public DbSet<JwtRefreshToken> JwtRefreshTokens { get; set; }
+        public DbSet<IncludedResource> IncludedResources { get; set; }
     }
 }

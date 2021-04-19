@@ -98,7 +98,7 @@ namespace Access.Controllers
                 // Add roles requested to user
                 RoleRepository roleRepository = new RoleRepository(_accessContext, this.Config);
 
-                IQueryable<Role> onlyUserRoles = roleRepository.FindBy(r => newUser.RolesRequested.Contains(r.NameCanonical));
+                IQueryable<Role> onlyUserRoles = roleRepository.FindBy(r => newUser.RolesRequested.Contains(r.KeyCode));
 
                 if (onlyUserRoles.Count() > 0)
                 {

@@ -35,16 +35,16 @@ namespace Access.Migrations
                 Id = Guid.NewGuid(),
                 ResourceId = USER_RESOURCE_ID,
                 IncludedRecourceId = USER_ROLE_RESOURCE_ID,
-                CollectionName = "UserRoles",
-                Description = "Roles for User"
+                CollectionName = "UserRoles.Role",
+                Description = "Roles for User from UserRoles"
              },
              // ROLE - UserRoles, RoleResourcesAccess[]
             new IncludedResource { 
                 Id = Guid.NewGuid(),
                 ResourceId = ROLE_RESOURCE_ID,
                 IncludedRecourceId = USER_RESOURCE_ID,
-                CollectionName = "UserRoles",
-                Description = "Users Assigned to Role"
+                CollectionName = "UserRoles.User",
+                Description = "Users Assigned to Role from UserRoles"
              },
             new IncludedResource { 
                 Id = Guid.NewGuid(),

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace DORA.Access.Context.Entities
 {
@@ -10,11 +10,11 @@ namespace DORA.Access.Context.Entities
     {
         [Key]
         [Column("id")]
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public Guid? Id { get; set; }
 
         [Column("role_id")]
-        [JsonPropertyName("role_id")]
+        [JsonProperty("role_id")]
         [ForeignKey(nameof(Role))]
         public Guid RoleId { get; set; }
 
@@ -22,7 +22,7 @@ namespace DORA.Access.Context.Entities
         public Role Role { get; set; }
 
         [Column("user_id")]
-        [JsonPropertyName("user_id")]
+        [JsonProperty("user_id")]
         [ForeignKey(nameof(User))]
         public Guid UserId { get; set; }
 
@@ -30,7 +30,7 @@ namespace DORA.Access.Context.Entities
         public User User { get; set; }
 
         [Column("archived_stamp")]
-        [JsonPropertyName("archived_stamp")]
+        [JsonProperty("archived_stamp")]
         public DateTime? ArchivedStamp { get; set; }
     }
 }

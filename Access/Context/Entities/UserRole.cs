@@ -18,7 +18,7 @@ namespace DORA.Access.Context.Entities
         [ForeignKey(nameof(Role))]
         public Guid RoleId { get; set; }
 
-        [JsonIgnore]
+        [JsonProperty("role")]
         public Role Role { get; set; }
 
         [Column("user_id")]
@@ -26,7 +26,7 @@ namespace DORA.Access.Context.Entities
         [ForeignKey(nameof(User))]
         public Guid UserId { get; set; }
 
-        [JsonIgnore]
+        [JsonProperty("user")]
         public User User { get; set; }
 
         [Column("archived_stamp")]

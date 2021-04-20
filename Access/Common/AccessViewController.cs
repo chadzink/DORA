@@ -80,6 +80,8 @@ namespace DORA.Access.Common
             if (this.NoRead)
                 return this.InvalidAccess();
 
+            JsonDataError JsonErr;
+
             switch(command)
             {
                 case "filters":
@@ -89,11 +91,25 @@ namespace DORA.Access.Common
                     List<IncludedResource> includedResources = DataRepository.IncludedResources(this._resourceCode).ToList();
                     return Ok(new JsonData<IncludedResource>(includedResources).Serialize());
                 case "typescript":
-                    EntityTypeScript<TEntity> entityTypeScript = new EntityTypeScript<TEntity>();
+                    EntityTypeScript entityTypeScript = new EntityTypeScript(typeof(TEntity));
                     return Ok(entityTypeScript.TypeDefinition);
             }
 
-            JsonDataError JsonErr = new JsonDataError("Invalid Command: Try [filters, includes, typescript]");
+            if (command.StartsWith("typescript"))
+            {
+                string typename = command.Split(':')[1];
+
+                if (Type.GetType(typename) == null)
+                {
+                    JsonErr = new JsonDataError("Type not found, make sure you have the full namespace.");
+                    return NotFound(JsonErr.Serialize());
+                }
+
+                EntityTypeScript entityTypeScript = new EntityTypeScript(Type.GetType(typename));
+                return Ok(entityTypeScript.TypeDefinition);
+            }
+
+            JsonErr = new JsonDataError("Invalid Command: Try [filters, includes, typescript, typescript:<typename>]");
             return NotFound(JsonErr.Serialize());
         }
 

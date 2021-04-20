@@ -99,7 +99,7 @@ namespace DORA.Access.Context.Entities
         public DateTime RefreshJwtTokenExpiresOn { get; set; }
 
         [NotMapped]
-        [JsonIgnore]
+        [JsonProperty("userRoles")]
         public ICollection<UserRole> UserRoles { get; set; }
     }
 }

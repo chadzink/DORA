@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using DORA.Access.Models;
+using Newtonsoft.Json;
 
 namespace Access.Helpers
 {
@@ -35,18 +37,46 @@ namespace Access.Helpers
         }
     }
 
-    public class EntityTypeScript<T>
+    public class EntityTypeScript
     {
         private Dictionary<string,string> columns { get; set; }
+        private Type entityType { get; set; }
 
-        public EntityTypeScript()
+        public EntityTypeScript(string typename)
+        {
+            this.entityType = Type.GetType(typename);
+            this.buildColumns();
+        }
+        public EntityTypeScript(Type entityType)
+        {
+            this.entityType = entityType;
+            this.buildColumns();
+        }
+
+        private void buildColumns()
         {
             this.columns = new Dictionary<string, string>();
-            Type entityType = typeof(T);
 
-            foreach (System.Reflection.PropertyInfo prop in entityType.GetProperties())
+            foreach (System.Reflection.PropertyInfo prop in this.entityType.GetProperties())
             {
-                this.columns.Add(prop.Name, this.mapJSTypeName(prop.PropertyType));
+                // try to find the JsonProperty attr
+                string jsonAttr = null;
+                bool includeColumn = true;
+
+                foreach(System.Attribute attr in prop.GetCustomAttributes(true))
+                {
+                    if (attr is JsonPropertyAttribute)
+                        jsonAttr = (attr as Newtonsoft.Json.JsonPropertyAttribute).PropertyName;
+
+                    if (attr is JsonIgnoreAttribute)
+                        includeColumn = false;
+                }
+
+                if (jsonAttr == "id" || prop.Name.ToLower() == "id")
+                    includeColumn = false;
+
+                if (includeColumn)
+                    this.columns.Add(jsonAttr != null ? jsonAttr : prop.Name, this.mapJSTypeName(prop.PropertyType));
             }
         }
 
@@ -54,9 +84,7 @@ namespace Access.Helpers
         {
             get
             {
-                Type entityType = typeof(T);
-
-                string result = "export type I" + entityType.Name + " = IEntity & {";
+                string result = "export type I" + this.entityType.Name + " = IEntity & {";
                 foreach (string columnName in this.columns.Keys)
                 {
                     result += "\n\t" + columnName + ": " + this.columns[columnName] + ";";
@@ -71,7 +99,7 @@ namespace Access.Helpers
         {
             if (propType == typeof(DateTime)
                 || propType == typeof(DateTime?)
-            ) return "date";
+            ) return "Date";
             else if (propType == typeof(int)
                 || propType == typeof(int?)
                 || propType == typeof(Int32?)
@@ -97,9 +125,41 @@ namespace Access.Helpers
                 || propType == typeof(Boolean?)
             ) return "boolean";
             else if (propType.Name.StartsWith("ICollection"))
-                return "<object>[]";
+            {
+                string collectionType = GetCollectionTypeName(propType);
+                return (collectionType != "object" ? "I" + collectionType : collectionType) + "[]";
+            }
 
             return "any";
+        }
+
+        private static string GetCollectionTypeName(Type type)
+        {
+            if (type.IsGenericType)
+            {
+                Type[] types = type.GetGenericArguments();
+                if (types.Length == 1)
+                {
+                    return types[0].Name;
+                }
+                else
+                {
+                    // Could be null if implements two IEnumerable
+                    foreach(Type itype in type.GetInterfaces())
+                    {
+                        if (itype.IsGenericType && itype.GetGenericTypeDefinition() == typeof(ICollection<>))
+                        {
+                            return itype.GetGenericArguments()[0].Name;
+                        }
+                    }
+                }
+            }
+            else if (type.IsArray)
+            {
+                return type.GetElementType().Name;
+            }
+            // TODO: Who knows, but its probably not suitable to render in a table
+            return "object";
         }
     }
 }

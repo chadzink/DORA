@@ -27,11 +27,11 @@ namespace DORA.Access.Context.Entities
         public DateTime? ArchivedStamp { get; set; }
 
         [NotMapped]
-        [JsonIgnore]
+        [JsonProperty("roleUsers")]
         public ICollection<UserRole> UserRoles { get; set; }
 
         [NotMapped]
-        [JsonIgnore]
+        [JsonProperty("roleResourcesAccesses")]
         public ICollection<RoleResourceAccess> RoleResourcesAccess { get; set; }
     }
 }

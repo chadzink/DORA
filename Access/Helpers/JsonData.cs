@@ -28,13 +28,6 @@ namespace DORA.Access.Helpers
 		public string recordType { get; set; }
 		public List<JsonError> errors { get; set; }
 
-		private JsonSerializerSettings _options = new JsonSerializerSettings
-		{
-			MaxDepth = 2,
-			Formatting = Formatting.Indented,
-			ReferenceLoopHandling = ReferenceLoopHandling.Ignore
-		};
-
 		public JsonData(
 			List<TEntity> records,
 			string access_token,
@@ -91,14 +84,15 @@ namespace DORA.Access.Helpers
 			this.message = message;
 		}
 
-		public JsonData<TEntity> setJsonSerializerOptions(JsonSerializerSettings options)
+		public string Serialize(int maxDepth = 1)
 		{
-			this._options = options;
-			return this;
-		}
-
-		public string Serialize()
-		{
+			JsonSerializerSettings options = new JsonSerializerSettings
+			{
+				MaxDepth = maxDepth,
+				Formatting = Formatting.Indented,
+				ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+			};
+			
 			if (this.page_meta != null)
 			{
 				return JsonConvert.SerializeObject(new
@@ -111,7 +105,7 @@ namespace DORA.Access.Helpers
                     access_token = this.access_token,
                     refresh_token = refresh_token,
                     api_errors = this.errors,
-                }, this._options);
+                }, options);
 			}
 			return JsonConvert.SerializeObject(new
 			{
@@ -122,7 +116,7 @@ namespace DORA.Access.Helpers
 				access_token = this.access_token,
 				refresh_token = refresh_token,
 				api_errors = this.errors,
-			}, this._options);
+			}, options);
 		}
 
 		public bool AddError(JsonError error)

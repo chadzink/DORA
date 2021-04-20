@@ -18,7 +18,7 @@ namespace DORA.Access.Context.Entities
         [ForeignKey(nameof(Resource))]
         public Guid ResourceId { get; set; }
 
-        [JsonIgnore]
+        [JsonProperty("resource")]
         public Resource Resource { get; set; }
 
         [Column("included_recource_id")]
@@ -26,8 +26,8 @@ namespace DORA.Access.Context.Entities
         [ForeignKey(nameof(IncludedRecourceId))]
         public Guid IncludedRecourceId { get; set; }
 
-        [JsonIgnore]
         [NotMapped]
+        [JsonProperty("includedRecource")]
         public Resource IncludedRecource { get; set; }
 
         [Column("collection_name")]

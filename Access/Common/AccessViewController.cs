@@ -8,6 +8,7 @@ using System;
 using System.Security.Claims;
 using DORA.Access.Context.Entities;
 using Microsoft.EntityFrameworkCore;
+using Access.Helpers;
 
 namespace DORA.Access.Common
 {
@@ -59,45 +60,57 @@ namespace DORA.Access.Common
         }
 
         /// <summary>
-        ///     Get filter options for the Entity
+        ///     Utility feature for entity controllers.
         /// </summary>
         /// <remarks>
-        ///     Gets the options for filtering the Entity records.
+        ///     
         /// </remarks>
+        /// <param name="command">
+        ///     filters: Gets the options for filtering the Entity records.
+        ///     includes: Gets the options for includes on the Entity.
+        ///     typescript: Get tempated typescript for the entity to use with common DORA React library.
+        /// </param>
         /// <response code="201">JSON with columns and operators</response>
         /// <response code="403">Invalid Access In Resource Manager</response>
-        [HttpGet("filters")]
+        [HttpGet("util")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult FilterInfo()
+        public IActionResult FilterInfo([FromQuery] string command)
         {
             // check READ role access to this resource
             if (this.NoRead)
                 return this.InvalidAccess();
 
-            FilterInfo<TEntity> filterInfo = new FilterInfo<TEntity>();
+            JsonDataError JsonErr;
 
-            return Ok(new JsonData<FilterInfo<TEntity>>(filterInfo).Serialize());
-        }
+            switch(command)
+            {
+                case "filters":
+                    FilterInfo<TEntity> filterInfo = new FilterInfo<TEntity>();
+                    return Ok(new JsonData<FilterInfo<TEntity>>(filterInfo).Serialize());
+                case "includes":
+                    List<IncludedResource> includedResources = DataRepository.IncludedResources(this._resourceCode).ToList();
+                    return Ok(new JsonData<IncludedResource>(includedResources).Serialize());
+                case "typescript":
+                    EntityTypeScript entityTypeScript = new EntityTypeScript(typeof(TEntity));
+                    return Ok(entityTypeScript.TypeDefinition);
+            }
 
-        /// <summary>
-        ///     Get include options for the Entity
-        /// </summary>
-        /// <remarks>
-        ///     Gets the options for includes the Entity records.
-        /// </remarks>
-        /// <response code="201">JSON with collection names</response>
-        /// <response code="403">Invalid Access In Resource Manager</response>
-        [HttpGet("includes")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult IncludedResources()
-        {
-            // check READ role access to this resource
-            if (this.NoRead)
-                return this.InvalidAccess();
+            if (command.StartsWith("typescript"))
+            {
+                string typename = command.Split(':')[1];
 
-            List<IncludedResource> includedResources = DataRepository.IncludedResources(this._resourceCode).ToList();
+                if (Type.GetType(typename) == null)
+                {
+                    JsonErr = new JsonDataError("Type not found, make sure you have the full namespace.");
+                    return NotFound(JsonErr.Serialize());
+                }
 
-            return Ok(new JsonData<IncludedResource>(includedResources).Serialize());
+                EntityTypeScript entityTypeScript = new EntityTypeScript(Type.GetType(typename));
+                return Ok(entityTypeScript.TypeDefinition);
+            }
+
+            JsonErr = new JsonDataError("Invalid Command: Try [filters, includes, typescript, typescript:<typename>]");
+            return NotFound(JsonErr.Serialize());
         }
 
         /// <summary>
@@ -114,7 +127,10 @@ namespace DORA.Access.Common
             [FromBody] List<FilterField> filters = null,
             [FromQuery] List<string> includes = null,
             [FromQuery] int page = 1,
-            [FromQuery] int size = 25)
+            [FromQuery] int size = 25,
+            [FromQuery] string order_by = null,
+            [FromQuery] string order_dir = "ASC"
+            )
         {
             // check READ role access to this resource
             if (this.NoRead)
@@ -130,8 +146,8 @@ namespace DORA.Access.Common
             User user = this.IncludeUser ? DataRepository.CurrentUser() : null;
 
             JsonData<TEntity> jsonResult = this.IncludeUser
-                ? FilterResult<TEntity>.ToJson(query, user, filters, page, size)
-                : FilterResult<TEntity>.ToJson(query, filters, page, size);
+                ? FilterResult<TEntity>.ToJson(query, user, filters, includes, page, size, order_by, order_dir)
+                : FilterResult<TEntity>.ToJson(query, filters, includes, page, size, order_by, order_dir);
 
             return Ok(jsonResult.Serialize());
         }
@@ -149,7 +165,10 @@ namespace DORA.Access.Common
         public IActionResult Get(
             [FromQuery] List<string> includes = null,
             [FromQuery] int page = 1,
-            [FromQuery] int size = 25/*, [FromQuery] string order = "Label ASC" */)
+            [FromQuery] int size = 25,
+            [FromQuery] string order_by = null,
+            [FromQuery] string order_dir = "ASC"
+        )
         {
             // check READ role access to this resource
             if (this.NoRead)
@@ -162,7 +181,7 @@ namespace DORA.Access.Common
                 ? DataRepository.FindAllWithIncludes(includes.ToArray())
                 : DataRepository.FindAll();
 
-            PagedResults<TEntity> paged = Paging<TEntity>.Page(query, page, size/*, order*/);
+            PagedResults<TEntity> paged = Paging<TEntity>.Page(query, includes, page, size, order_by, order_dir);
 
             List<TEntity> entities = paged != null && paged.query != null ? paged.query.ToList() : null;
 

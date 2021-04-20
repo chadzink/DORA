@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace DORA.Access.Context.Entities
 {
@@ -11,7 +11,7 @@ namespace DORA.Access.Context.Entities
     {
         [Key]
         [Column("id")]
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public Guid? Id { get; set; }
 
         [Column("password")]
@@ -19,7 +19,7 @@ namespace DORA.Access.Context.Entities
         public string Password { get; set; }
 
         [Column("user_id")]
-        [JsonPropertyName("user_id")]
+        [JsonIgnore]
         [ForeignKey(nameof(User))]
         public Guid UserId { get; set; }
 
@@ -27,11 +27,11 @@ namespace DORA.Access.Context.Entities
         public User User { get; set; }
 
         [Column("created_stamp")]
-        [JsonPropertyName("created_stamp")]
+        [JsonIgnore]
         public DateTime? CreatedStamp { get; set; }
 
         [Column("archived_stamp")]
-        [JsonPropertyName("archived_stamp")]
+        [JsonIgnore]
         public DateTime? ArchivedStamp { get; set; }
     }
 }

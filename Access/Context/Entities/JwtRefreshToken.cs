@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace DORA.Access.Context.Entities
 {
@@ -10,20 +10,20 @@ namespace DORA.Access.Context.Entities
     {
         [Key]
         [Column("id")]
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Column("refresh_token")]
-        [JsonPropertyName("refresh_token")]
+        [JsonProperty("refreshToken")]
         public string RefreshToken { get; set; }
 
         [Column("username")]
-        [JsonPropertyName("username")]
+        [JsonProperty("username")]
         public string UserName { get; set; }
 
         [Column("valid")]
-        [JsonPropertyName("valid")]
+        [JsonProperty("valid")]
         public DateTime ValidUntil { get; set; }
     }
 }

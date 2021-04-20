@@ -9,9 +9,17 @@ namespace DORA.Access.Helpers
     {
         public static PagedResults<TEntity> Page(
             IQueryable<TEntity> query,
-            int page = 1, int size = 25, string order = null
+            List<string> includes = null,
+            int page = 1,
+            int size = 25,
+            string sortBy = null,
+            string sortDir = "ASC"
         )
         {
+            // first sort the query, if sortBy is provided
+            if (sortBy != null)
+                query = SorterUtility<TEntity>.Apply(query, sortBy, sortDir);
+            
             // calcualte total record in query
             int queryRecordCount = query.Count();
 
@@ -24,7 +32,9 @@ namespace DORA.Access.Helpers
                 size = size,
                 total = queryRecordCount,
                 pages = size > 0 ? (int)Math.Ceiling((double)queryRecordCount / size) : 0,
-                order = order,
+                sortBy = sortBy,
+                sortDir = sortDir,
+                includes = includes,
             };
 
             return new PagedResults<TEntity> { query = query, meta = pageMeta };

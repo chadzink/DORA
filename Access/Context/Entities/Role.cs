@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace DORA.Access.Context.Entities
 {
@@ -11,27 +11,27 @@ namespace DORA.Access.Context.Entities
     {
         [Key]
         [Column("id")]
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public Guid? Id { get; set; }
 
         [Column("label")]
-        [JsonPropertyName("label")]
+        [JsonProperty("label")]
         public string Label { get; set; }
 
         [Column("key_code")]
-        [JsonPropertyName("key_code")]
+        [JsonProperty("keyCode")]
         public string KeyCode { get; set; }
 
         [Column("archived_stamp")]
-        [JsonPropertyName("archived_stamp")]
+        [JsonIgnore]
         public DateTime? ArchivedStamp { get; set; }
 
         [NotMapped]
-        [JsonPropertyName("user_roles")]
+        [JsonProperty("roleUsers")]
         public ICollection<UserRole> UserRoles { get; set; }
 
         [NotMapped]
-        [JsonPropertyName("role_resources_accesses")]
+        [JsonProperty("roleResourcesAccesses")]
         public ICollection<RoleResourceAccess> RoleResourcesAccess { get; set; }
     }
 }

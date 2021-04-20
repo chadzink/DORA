@@ -9,11 +9,15 @@ namespace DORA.Access.Helpers
 {
     public static class FilterResult<TEntity>
     {
-        public static JsonData<TEntity> ToJson(
+        public static JsonData<TEntity> ToJson( // Adds user as second param
             IQueryable<TEntity> query,
             User user,
             List<FilterField> filters = null,
-            int page = 1, int size = 25
+            List<string> includes = null,
+            int page = 1,
+            int size = 25,
+            string sortBy = null,
+            string sortDir = "ASC"
         )
         {
             if (query != null && filters != null)
@@ -22,7 +26,7 @@ namespace DORA.Access.Helpers
             }
 
             // Apply paging utility
-            PagedResults<TEntity> paged = Paging<TEntity>.Page(query, page, size/*, order*/);
+            PagedResults<TEntity> paged = Paging<TEntity>.Page(query, includes, page, size, sortBy, sortDir);
 
             List<TEntity> entities = paged.query.ToList();
 
@@ -32,7 +36,11 @@ namespace DORA.Access.Helpers
         public static JsonData<TEntity> ToJson(
             IQueryable<TEntity> query,
             List<FilterField> filters = null,
-            int page = 1, int size = 25
+            List<string> includes = null,
+            int page = 1,
+            int size = 25,
+            string sortBy = null,
+            string sortDir = "ASC"
         )
         {
             if (query != null && filters != null)
@@ -41,7 +49,7 @@ namespace DORA.Access.Helpers
             }
 
             // Apply paging utility
-            PagedResults<TEntity> paged = Paging<TEntity>.Page(query, page, size/*, order*/);
+            PagedResults<TEntity> paged = Paging<TEntity>.Page(query, includes, page, size, sortBy, sortDir);
 
             List<TEntity> entities = paged.query.ToList();
 
@@ -301,37 +309,6 @@ namespace DORA.Access.Helpers
             }
 
             return FilterFieldType.None;
-        }
-    }
-
-
-    public class FilterInfo<T>
-    {
-        public List<string> columns { get; private set; }
-        public List<FilterOperatorOptions> operators { get; private set; }
-
-        public FilterInfo()
-        {
-            this.columns = new List<string>();
-            Type entityType = typeof(T);
-
-            foreach (System.Reflection.PropertyInfo prop in entityType.GetProperties())
-            {
-                this.columns.Add(prop.Name);
-            }
-
-            // create operators list
-            this.operators = new List<FilterOperatorOptions>() {
-                new FilterOperatorOptions { Description = "Contains", Value = "in" },
-                new FilterOperatorOptions { Description = "Ends With", Value = "ends" },
-                new FilterOperatorOptions { Description = "Starts With", Value = "starts" },
-                new FilterOperatorOptions { Description = "Equals", Value = "eq" },
-                new FilterOperatorOptions { Description = "No Equal To", Value = "neq" },
-                new FilterOperatorOptions { Description = "Greater", Value = "gt" },
-                new FilterOperatorOptions { Description = "Greater or Equals", Value = "gte" },
-                new FilterOperatorOptions { Description = "Less", Value = "lt" },
-                new FilterOperatorOptions { Description = "Less or Equals", Value = "lte" },
-            };
         }
     }
 }

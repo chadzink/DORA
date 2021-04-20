@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace DORA.Access.Context.Entities
 {
@@ -11,47 +11,47 @@ namespace DORA.Access.Context.Entities
     {
         [Key]
         [Column("id")]
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public Guid? Id { get; set; }
 
         [Column("role_id")]
-        [JsonPropertyName("role_id")]
+        [JsonProperty("roleId")]
         [ForeignKey(nameof(Role))]
         public Guid RoleId { get; set; }
 
-        [JsonIgnore]
+        [JsonProperty("role")]
         public Role Role { get; set; }
 
         [Column("resource_id")]
-        [JsonPropertyName("resource_id")]
+        [JsonProperty("resourceId")]
         [ForeignKey(nameof(Resource))]
         public Guid ResourceId { get; set; }
 
-        [JsonIgnore]
+        [JsonProperty("resource")]
         public Resource Resource { get; set; }
 
         [Column("resource_access_id")]
-        [JsonPropertyName("resource_access_id")]
+        [JsonProperty("resourceAccessId")]
         [ForeignKey(nameof(ResourceAccess))]
         public Guid ResourceAccessId { get; set; }
 
-        [JsonIgnore]
+        [JsonProperty("resourceAccess")]
         public ResourceAccess ResourceAccess { get; set; }
 
         [Column("archived_stamp")]
-        [JsonPropertyName("archived_stamp")]
+        [JsonIgnore]
         public DateTime? ArchivedStamp { get; set; }
 
         [NotMapped]
-        [JsonPropertyName("roles")]
+        [JsonProperty("roles")]
         public ICollection<Role> Roles { get; set; }
 
         [NotMapped]
-        [JsonPropertyName("resources")]
+        [JsonProperty("resources")]
         public ICollection<Resource> Resources { get; set; }
 
         [NotMapped]
-        [JsonPropertyName("resource_accesses")]
+        [JsonProperty("resourceAccesses")]
         public ICollection<ResourceAccess> ResourceAccesses { get; set; }
     }
 }

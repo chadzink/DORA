@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace DORA.Access.Models
 {
@@ -14,6 +15,8 @@ namespace DORA.Access.Models
         public int size { get; set; }
         public int total { get; set; }
         public int pages { get; set; }
-        public string order { get; set; }
+        public string sortBy { get; set; }
+        public string sortDir { get; set; }
+        public List<string> includes { get; set; }
     }
 }

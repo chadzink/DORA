@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text.Json;
 using DORA.Access.Models;
+using Newtonsoft.Json;
 
 namespace DORA.Access.Helpers
 {
@@ -28,8 +28,6 @@ namespace DORA.Access.Helpers
 		public string recordType { get; set; }
 		public List<JsonError> errors { get; set; }
 
-		private JsonSerializerOptions _options = null;
-
 		public JsonData(
 			List<TEntity> records,
 			string access_token,
@@ -45,8 +43,6 @@ namespace DORA.Access.Helpers
 			this.page_meta = page_meta;
 			this.success = success;
 			this.message = message;
-
-			this._options = new JsonSerializerOptions { WriteIndented = true };
 		}
 
 		public JsonData(
@@ -60,8 +56,6 @@ namespace DORA.Access.Helpers
 			this.page_meta = page_meta;
 			this.success = success;
 			this.message = message;
-
-			this._options = new JsonSerializerOptions { WriteIndented = true };
 		}
 
 		public JsonData(
@@ -77,8 +71,6 @@ namespace DORA.Access.Helpers
 			this.refresh_token = refresh_token;
 			this.success = success;
 			this.message = message;
-
-			this._options = new JsonSerializerOptions { WriteIndented = true };
 		}
 
 		public JsonData(
@@ -90,33 +82,32 @@ namespace DORA.Access.Helpers
 			this.recordType = record != null ? record.GetType().ToString() : null;
 			this.success = success;
 			this.message = message;
-
-			this._options = new JsonSerializerOptions { WriteIndented = true };
 		}
 
-		public JsonData<TEntity> setJsonSerializerOptions(JsonSerializerOptions options)
+		public string Serialize(int maxDepth = 1)
 		{
-			this._options = options;
-			return this;
-		}
-
-		public string Serialize()
-		{
+			JsonSerializerSettings options = new JsonSerializerSettings
+			{
+				MaxDepth = maxDepth,
+				Formatting = Formatting.Indented,
+				ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+			};
+			
 			if (this.page_meta != null)
 			{
-				return JsonSerializer.Serialize(new
+				return JsonConvert.SerializeObject(new
 				{
 					data = this.records,
-					type = this.recordType,
-					page_meta = this.page_meta,
-					success = this.success,
-					message = this.message,
-					access_token = this.access_token,
-					refresh_token = refresh_token,
-					api_errors = this.errors,
-				}, this._options);
+                    type = this.recordType,
+                    page_meta = this.page_meta,
+                    success = this.success,
+                    message = this.message,
+                    access_token = this.access_token,
+                    refresh_token = refresh_token,
+                    api_errors = this.errors,
+                }, options);
 			}
-			return JsonSerializer.Serialize(new
+			return JsonConvert.SerializeObject(new
 			{
 				data = this.records,
 				type = this.recordType,
@@ -125,7 +116,7 @@ namespace DORA.Access.Helpers
 				access_token = this.access_token,
 				refresh_token = refresh_token,
 				api_errors = this.errors,
-			}, this._options);
+			}, options);
 		}
 
 		public bool AddError(JsonError error)

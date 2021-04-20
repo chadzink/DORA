@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace DORA.Access.Context.Entities
 {
@@ -11,32 +10,32 @@ namespace DORA.Access.Context.Entities
     {
         [Key]
         [Column("id")]
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public Guid? Id { get; set; }
 
         [Column("resource_id")]
-        [JsonPropertyName("resource_id")]
+        [JsonProperty("resourceId")]
         [ForeignKey(nameof(Resource))]
         public Guid ResourceId { get; set; }
 
-        [JsonIgnore]
+        [JsonProperty("resource")]
         public Resource Resource { get; set; }
 
         [Column("included_recource_id")]
-        [JsonPropertyName("included_recource_id")]
+        [JsonProperty("includedRecourceId")]
         [ForeignKey(nameof(IncludedRecourceId))]
         public Guid IncludedRecourceId { get; set; }
 
-        [JsonIgnore]
         [NotMapped]
+        [JsonProperty("includedRecource")]
         public Resource IncludedRecource { get; set; }
 
         [Column("collection_name")]
-        [JsonPropertyName("collection_name")]
+        [JsonProperty("collectionName")]
         public string CollectionName { get; set; }
 
         [Column("description")]
-        [JsonPropertyName("description")]
+        [JsonProperty("description")]
         public string Description { get; set; }
     }
 }

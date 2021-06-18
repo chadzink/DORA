@@ -57,7 +57,10 @@ namespace DORA.Access.Services
         {
             PasswordHasher passwordHasher = new PasswordHasher();
 
-            User user = _dataRepository.FindOneBy(r => r.UserName == username && r.enabled != 0);
+            User user = _dataRepository
+                .FindAllWithIncludes(new string[] { "UserRoles.Role" })
+                .Where(r => r.UserName == username && r.enabled != 0)
+                .FirstOrDefault(r => r.UserName == username && r.enabled != 0);
 
             if (user == null)
                 return null;

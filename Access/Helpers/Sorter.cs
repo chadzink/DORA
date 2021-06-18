@@ -52,6 +52,9 @@ namespace DORA.Access.Helpers
                 ParameterExpression parameter = Expression.Parameter(typeof(T), "x");
                 MemberExpression memberProperty = Expression.Property(parameter, propertyName);
 
+                if (Nullable.GetUnderlyingType(memberProperty.Type) != null)
+                    memberProperty = Expression.Property(Expression.Property(parameter, propertyName), "Value");
+
                 return Expression.Lambda<Func<T, dynamic>>(memberProperty, parameter);
             }
         }

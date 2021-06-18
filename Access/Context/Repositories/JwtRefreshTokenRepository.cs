@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Linq.Expressions;
 using DORA.Access.Context.Entities;
 using DORA.Access.Common;
 using Microsoft.Extensions.Configuration;
@@ -20,6 +19,14 @@ namespace DORA.Access.Context.Repositories
             return from s in dbContext.JwtRefreshTokens select s;
         }
 
+        public JwtRefreshToken Find(int id)
+        {
+            return this.FindOneBy(e => e.Id == id);
+        }
+
+        // need to add this to complete interface -- does nothing
+        public override JwtRefreshToken Find(Guid id) { return null; }
+
         public override IQueryable<JwtRefreshToken> FindAllWithIncludes(string[] collectionNames)
         {
             IQueryable<JwtRefreshToken> query = this.FindAll();
@@ -30,70 +37,22 @@ namespace DORA.Access.Context.Repositories
             return query;
         }
 
-        public JwtRefreshToken Find(int id)
+        public override JwtRefreshToken CopyEntity(JwtRefreshToken current, JwtRefreshToken updates)
         {
-            return this.FindOneBy(e => e.Id == id);
-        }
-
-        public override JwtRefreshToken Find(Guid id) { return null; }
-
-        public override JwtRefreshToken FindOneBy(Expression<Func<JwtRefreshToken, bool>> criteria)
-        {
-            return dbContext.JwtRefreshTokens.FirstOrDefault(criteria);
-        }
-
-        public override IQueryable<JwtRefreshToken> FindBy(Expression<Func<JwtRefreshToken, bool>> criteria)
-        {
-            // bool isAdmin = this.CurrentUser().IsAdmin.HasValue && this.CurrentUser().IsAdmin.Value;
-
-            IQueryable<JwtRefreshToken> query = FindAll();
-
-            return base.FindBy(query, criteria);
-        }
-
-        public override JwtRefreshToken[] Create(JwtRefreshToken[] entity)
-        {
-            dbContext.JwtRefreshTokens.AddRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
-        }
-
-        public override JwtRefreshToken[] Update(JwtRefreshToken[] current, JwtRefreshToken[] previous)
-        {
-            if (current.Length != previous.Length)
-                return null;
-
-            dbContext.JwtRefreshTokens.AttachRange(current);
-
-            for (int e = 0; e < current.Length; e++)
-            {
-                current[e].RefreshToken = previous[e].RefreshToken;
-                current[e].UserName = previous[e].UserName;
-                current[e].ValidUntil = previous[e].ValidUntil;
-            }
-
-            dbContext.SaveChanges();
+            current.RefreshToken = updates.RefreshToken;
+            current.UserName = updates.UserName;
+            current.ValidUntil = updates.ValidUntil;
 
             return current;
         }
 
-        public override JwtRefreshToken[] SaveChanges(JwtRefreshToken[] entity)
+        public override JwtRefreshToken[] JoinAllAndSort(JwtRefreshToken[] entities)
         {
-            dbContext.JwtRefreshTokens.AttachRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
+            return (
+                from e in this.FindAll().ToList()
+                join c in entities on e.Id equals c.Id
+                select c
+            ).OrderBy(c => c.Id).ToArray();
         }
-
-        public override JwtRefreshToken[] Delete(JwtRefreshToken[] entity)
-        {
-            dbContext.JwtRefreshTokens.RemoveRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
-        }
-
-        public override JwtRefreshToken[] Restore(Guid[] id) { return null; }
     }
 }

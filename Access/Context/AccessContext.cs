@@ -73,7 +73,12 @@ namespace DORA.Access.Context
 
         internal static AccessContext CreateContext()
         {
-            DependencyResolver resolver = new DependencyResolver { CurrentDirectory = Directory.GetCurrentDirectory() };
+            DependencyResolver resolver = new DependencyResolver
+            {
+                CurrentDirectory = Directory.GetCurrentDirectory(),
+                TargetAssembly = "Access",
+                ConnectionStringsKey = "BaseConnection",
+            };
             BaseContext baseCtx = resolver.ServiceProvider.GetService(typeof(BaseContext)) as BaseContext;
 
             return new AccessContext(baseCtx.options);

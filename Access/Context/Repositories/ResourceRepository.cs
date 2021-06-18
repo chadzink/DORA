@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Linq.Expressions;
 using DORA.Access.Context.Entities;
 using DORA.Access.Common;
 using Microsoft.Extensions.Configuration;
@@ -31,6 +30,11 @@ namespace DORA.Access.Context.Repositories
                    select s;
         }
 
+        public override Resource Find(Guid id)
+        {
+            return this.FindOneBy(e => e.Id == id);
+        }
+
         public override IQueryable<Resource> FindAllWithIncludes(string[] collectionNames)
         {
             IQueryable<Resource> query = this.FindAll();
@@ -41,34 +45,9 @@ namespace DORA.Access.Context.Repositories
             return query;
         }
 
-        public override Resource Find(Guid id)
-        {
-            return this.FindOneBy(e => e.Id == id);
-        }
-
-        public override Resource FindOneBy(Expression<Func<Resource, bool>> criteria)
-        {
-            return dbContext.Resources.FirstOrDefault(criteria);
-        }
-
-        public override IQueryable<Resource> FindBy(Expression<Func<Resource, bool>> criteria)
-        {
-            IQueryable<Resource> query = FindAll();
-
-            return base.FindBy(query, criteria);
-        }
-
         public override Resource[] Create(Resource[] entity)
         {
-
-            foreach (Resource e in entity)
-            {
-                if (!e.Id.HasValue)
-                    e.Id = Guid.NewGuid();
-            }
-
-            dbContext.Resources.AddRange(entity);
-            dbContext.SaveChanges();
+            entity = base.Create(entity);
 
             // add the default Resource Access records
             foreach (Resource e in entity)
@@ -136,48 +115,20 @@ namespace DORA.Access.Context.Repositories
             return true;
         }
 
-        public override Resource[] Update(Resource[] current, Resource[] previous)
+        public override Resource CopyEntity(Resource current, Resource update)
         {
-            if (current.Length != previous.Length)
-                return null;
-
-            // filter & sort out entities that the user doe not have access to
-            current = (
-                from e in this.FindAll().ToList()
-                join c in current on e.Id equals c.Id.Value
-                select c
-            ).OrderBy(c => c.Id).ToArray();
-
-            // filter and sort
-            previous = (
-                from c in current
-                join p in previous on c.Id.Value equals p.Id.Value
-                select p
-            ).OrderBy(c => c.Id).ToArray();
-
-            for (int e = 0; e < current.Length; e++)
-            {
-                current[e].KeyCode = previous[e].KeyCode;
-            }
-
-            dbContext.Resources.AttachRange(current);
-            dbContext.SaveChanges();
+            current.KeyCode = update.KeyCode;
 
             return current;
         }
 
-        public override Resource[] SaveChanges(Resource[] entity)
+        public override Resource[] JoinAllAndSort(Resource[] entities)
         {
-            entity = (
+            return (
                 from e in this.FindAll().ToList()
-                join p in entity on e.Id equals p.Id.Value
-                select p
-            ).ToArray();
-
-            dbContext.Resources.AttachRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
+                join c in entities on e.Id equals c.Id
+                select c
+            ).OrderBy(c => c.Id).ToArray();
         }
 
         public override Resource[] Delete(Resource[] entity)

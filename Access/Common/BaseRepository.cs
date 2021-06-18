@@ -113,6 +113,13 @@ namespace DORA.Access.Common
 
         public abstract IQueryable<TEntity> FindAllWithIncludes(string[] collectionNames);
 
+        public abstract TEntity Find(Guid id);
+
+        public IQueryable<TEntity> FindBy(Expression<Func<TEntity, bool>> criteria)
+        {
+            return this.FindBy(this.FindAll(), criteria);
+        }
+
         public List<IncludedResource> IncludedResources(string resourceKeyCode)
         {
             return (
@@ -123,11 +130,10 @@ namespace DORA.Access.Common
             ).ToList();
         }
 
-        public abstract TEntity Find(Guid id);
-
-        public abstract TEntity FindOneBy(Expression<Func<TEntity, bool>> criteria);
-
-        public abstract IQueryable<TEntity> FindBy(Expression<Func<TEntity, bool>> criteria);
+        public TEntity FindOneBy(Expression<Func<TEntity, bool>> criteria)
+        {
+            return this.FindAll().Where(criteria).FirstOrDefault(criteria);
+        }
 
         public void SetUser(ClaimsPrincipal user)
         {
@@ -160,7 +166,10 @@ namespace DORA.Access.Common
                 )
                 {
                     user = JwtToken.AddTokensToUser(
-                        _userContext.Users.Where(e => e.Id == userGuid).FirstOrDefault(),
+                        _userContext.Users
+                            .Include("UserRoles.Role")
+                            .Where(e => e.Id == userGuid)
+                            .FirstOrDefault(),
                         Config["AppSettings:Secret"],
                         Config["AppSettings:JwtIssuer"],
                         Config["AppSettings:JwtAudience"],
@@ -171,7 +180,10 @@ namespace DORA.Access.Common
                 }
                 else
                 {
-                    user = _userContext.Users.Where(e => e.Id == userGuid).FirstOrDefault();
+                    user = _userContext.Users
+                        .Include("UserRoles.Role")
+                        .Where(e => e.Id == userGuid)
+                        .FirstOrDefault();
                 }
             }
 
@@ -203,8 +215,13 @@ namespace DORA.Access.Common
         }
     }
 
-
-    public abstract class RepositoryView<TContext, TEntity> : _Repository<TContext, TEntity>, IRepositoryView<TEntity>
+    /// <summary>
+    /// A Repository the does not contain and CRUD functions
+    /// </summary>
+    /// <typeparam name="TContext">The database context type for the entity</typeparam>
+    /// <typeparam name="TEntity">The database entity type</typeparam>
+    public abstract class RepositoryView<TContext, TEntity, TKey>
+        : _Repository<TContext, TEntity>, IRepositoryView<TEntity>
         where TContext : DbContext
     {
         public RepositoryView(TContext context, IConfiguration config)
@@ -213,21 +230,51 @@ namespace DORA.Access.Common
     }
 
 
-    public abstract class Repository<TContext, TEntity> : _Repository<TContext, TEntity>, IRepository<TEntity>
+    public abstract class Repository<TContext, TEntity>
+        : _Repository<TContext, TEntity>, IRepository<TEntity>
         where TContext : DbContext
     {
         public Repository(TContext context, IConfiguration config)
             : base(context, config)
         { }
 
-        public TEntity Create(TEntity entity)
+        public abstract TEntity CopyEntity(TEntity current, TEntity update);
+
+        public abstract TEntity[] JoinAllAndSort(TEntity[] entities);
+
+        public TEntity[] CopyEntityArray(TEntity[] current, TEntity[] updates)
+        {
+            if (current.Length != updates.Length)
+                return null;
+
+            // filter & sort out entities that the user doe not have access to
+            current = this.JoinAllAndSort(current);
+
+            // filter and sort
+            updates = this.JoinAllAndSort(updates);
+
+            for (int e = 0; e < current.Length; e++)
+            {
+                current[e] = CopyEntity(current[e], updates[e]);
+            }
+
+            return current;
+        }
+
+        public virtual TEntity Create(TEntity entity)
         {
             return this.Create(new TEntity[] { entity } ).First();
         }
 
-        public abstract TEntity[] Create(TEntity[] entity);
+        public virtual TEntity[] Create(TEntity[] entity)
+        {
+            dbContext.AddRange(entity);
+            dbContext.SaveChanges();
 
-        public TEntity Update(TEntity dbEntity, TEntity entity)
+            return entity;
+        }
+
+        public virtual TEntity Update(TEntity dbEntity, TEntity entity)
         {
             return this.Update(
                 new TEntity[] { dbEntity },
@@ -235,34 +282,59 @@ namespace DORA.Access.Common
             ).First();
         }
 
-        public abstract TEntity[] Update(TEntity[] dbEntity, TEntity[] entity);
+        public virtual TEntity[] Update(TEntity[] current, TEntity[] updates)
+        {
+            current = this.CopyEntityArray(current, updates);
 
-        public TEntity SaveChanges(TEntity dbEntity)
+            dbContext.AttachRange(current);
+            dbContext.SaveChanges();
+
+            return current;
+        }
+
+        public virtual TEntity SaveChanges(TEntity dbEntity)
         {
             return this.SaveChanges(
                 new TEntity[] { dbEntity }
             ).First();
         }
 
-        public abstract TEntity[] SaveChanges(TEntity[] dbEntity);
+        public virtual TEntity[] SaveChanges(TEntity[] entity)
+        {
+            entity = this.JoinAllAndSort(entity);
+            dbContext.AttachRange(entity);
+            dbContext.SaveChanges();
 
-        public TEntity Delete(TEntity entity)
+            return entity;
+        }
+
+        public virtual TEntity Delete(TEntity entity)
         {
             return this.Delete(
                 new TEntity[] { entity }
             ).First();
         }
 
-        public abstract TEntity[] Delete(TEntity[] entity);
+        public virtual TEntity[] Delete(TEntity[] entity)
+        {
+            entity = this.JoinAllAndSort(entity);
+            dbContext.RemoveRange(entity);
+            dbContext.SaveChanges();
 
-        public TEntity Restore(Guid id)
+            return entity;
+        }
+
+        public virtual TEntity Restore(Guid id)
         {
             return this.Restore(
                 new Guid[] { id }
             ).First();
         }
 
-        public abstract TEntity[] Restore(Guid[] id);
+        public virtual TEntity[] Restore(Guid[] id)
+        {
+            return null;
+        }
 
         public bool CreateAccess(string resourceCode, IEnumerable<Claim> roleClaims)
         {

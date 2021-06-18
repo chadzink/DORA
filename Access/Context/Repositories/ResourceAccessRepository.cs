@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Linq.Expressions;
 using DORA.Access.Context.Entities;
 using DORA.Access.Common;
 using Microsoft.Extensions.Configuration;
@@ -22,6 +21,11 @@ namespace DORA.Access.Context.Repositories
                    select s;
         }
 
+        public override ResourceAccess Find(Guid id)
+        {
+            return this.FindOneBy(e => e.Id == id);
+        }
+
         public override IQueryable<ResourceAccess> FindAllWithIncludes(string[] collectionNames)
         {
             IQueryable<ResourceAccess> query = this.FindAll();
@@ -32,96 +36,31 @@ namespace DORA.Access.Context.Repositories
             return query;
         }
 
-        public override ResourceAccess Find(Guid id)
+        public override ResourceAccess CopyEntity(ResourceAccess current, ResourceAccess update)
         {
-            return this.FindOneBy(e => e.Id == id);
-        }
-
-        public override ResourceAccess FindOneBy(Expression<Func<ResourceAccess, bool>> criteria)
-        {
-            return dbContext.ResourceAccesses.FirstOrDefault(criteria);
-        }
-
-        public override IQueryable<ResourceAccess> FindBy(Expression<Func<ResourceAccess, bool>> criteria)
-        {
-            IQueryable<ResourceAccess> query = FindAll();
-
-            return base.FindBy(query, criteria);
-        }
-
-        public override ResourceAccess[] Create(ResourceAccess[] entity)
-        {
-            foreach (ResourceAccess e in entity)
-            {
-                if (!e.Id.HasValue)
-                    e.Id = Guid.NewGuid();
-            }
-
-            dbContext.ResourceAccesses.AddRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
-        }
-
-        public override ResourceAccess[] Update(ResourceAccess[] current, ResourceAccess[] previous)
-        {
-            if (current.Length != previous.Length)
-                return null;
-
-            // filter & sort out entities that the user doe not have access to
-            current = (
-                from e in this.FindAll().ToList()
-                join c in current on e.Id equals c.Id.Value
-                select c
-            ).OrderBy(c => c.Id).ToArray();
-
-            // filter and sort
-            previous = (
-                from c in current
-                join p in previous on c.Id.Value equals p.Id.Value
-                select p
-            ).OrderBy(c => c.Id).ToArray();
-
-            for (int e = 0; e < current.Length; e++)
-            {
-                current[e].ResourceId = previous[e].ResourceId;
-                current[e].KeyCode = previous[e].KeyCode;    
-            }
-
-            dbContext.ResourceAccesses.AttachRange(current);
-            dbContext.SaveChanges();
+            current.ResourceId = update.ResourceId;
+            current.KeyCode = update.KeyCode;
 
             return current;
         }
 
-        public override ResourceAccess[] SaveChanges(ResourceAccess[] entity)
+        public override ResourceAccess[] JoinAllAndSort(ResourceAccess[] entities)
         {
-            entity = (
+            return (
                 from e in this.FindAll().ToList()
-                join p in entity on e.Id equals p.Id.Value
-                select p
-            ).ToArray();
-
-            dbContext.ResourceAccesses.AttachRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
+                join c in entities on e.Id equals c.Id
+                select c
+            ).OrderBy(c => c.Id).ToArray();
         }
 
         public override ResourceAccess[] Delete(ResourceAccess[] entity)
         {
-            entity = (
-                from e in this.FindAll().ToList()
-                join p in entity on e.Id equals p.Id.Value
-                select p
-            ).ToArray();
+            entity = this.JoinAllAndSort(entity);
 
             foreach (ResourceAccess dbEntity in entity)
             {
                 dbEntity.ArchivedStamp = DateTime.Now;
             }
-
-            dbContext.ResourceAccesses.AttachRange(entity);
             dbContext.SaveChanges();
 
             return entity;

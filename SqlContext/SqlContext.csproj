@@ -4,7 +4,7 @@
     <TargetFramework>net5.0</TargetFramework>
     <PackOnBuild>true</PackOnBuild>
     <PackageId>DORA.SqlContext</PackageId>
-    <PackageVersion>1.0.8</PackageVersion>
+    <PackageVersion>1.0.17</PackageVersion>
     <Authors>Chad Zink</Authors>
     <Description>Simple MS SQL Context Base Support for multiple contexts in different environments</Description>
     <ReleaseVersion>1.0.1</ReleaseVersion>

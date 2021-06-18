@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Linq.Expressions;
 using DORA.Access.Context.Entities;
 using DORA.Access.Common;
 using Microsoft.Extensions.Configuration;
@@ -35,6 +34,11 @@ namespace DORA.Access.Context.Repositories
                    select s;
         }
 
+        public override RoleResourceAccess Find(Guid id)
+        {
+            return this.FindOneBy(e => e.Id == id);
+        }
+
         public override IQueryable<RoleResourceAccess> FindAllWithIncludes(string[] collectionNames)
         {
             IQueryable<RoleResourceAccess> query = this.FindAll();
@@ -45,89 +49,26 @@ namespace DORA.Access.Context.Repositories
             return query;
         }
 
-        public override RoleResourceAccess Find(Guid id)
+        public override RoleResourceAccess CopyEntity(RoleResourceAccess current, RoleResourceAccess update)
         {
-            return this.FindOneBy(e => e.Id == id);
-        }
-
-        public override RoleResourceAccess FindOneBy(Expression<Func<RoleResourceAccess, bool>> criteria)
-        {
-            return dbContext.RoleResourcesAccesses.FirstOrDefault(criteria);
-        }
-
-        public override IQueryable<RoleResourceAccess> FindBy(Expression<Func<RoleResourceAccess, bool>> criteria)
-        {
-            IQueryable<RoleResourceAccess> query = FindAll();
-
-            return base.FindBy(query, criteria);
-        }
-
-        public override RoleResourceAccess[] Create(RoleResourceAccess[] entity)
-        {
-            foreach (RoleResourceAccess e in entity)
-            {
-                if (!e.Id.HasValue)
-                    e.Id = Guid.NewGuid();
-            }
-
-            dbContext.RoleResourcesAccesses.AddRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
-        }
-
-        public override RoleResourceAccess[] Update(RoleResourceAccess[] current, RoleResourceAccess[] previous)
-        {
-            if (current.Length != previous.Length)
-                return null;
-
-            // filter & sort out entities that the user doe not have access to
-            current = (
-                from e in this.FindAll().ToList()
-                join c in current on e.Id equals c.Id.Value
-                select c
-            ).OrderBy(c => c.Id).ToArray();
-
-            // filter and sort
-            previous = (
-                from c in current
-                join p in previous on c.Id.Value equals p.Id.Value
-                select p
-            ).OrderBy(c => c.Id).ToArray();
-
-            for (int e = 0; e < current.Length; e++)
-            {
-                current[e].RoleId = previous[e].RoleId;
-                current[e].ResourceId = previous[e].ResourceId;
-            }
-
-            dbContext.RoleResourcesAccesses.AttachRange(current);
-            dbContext.SaveChanges();
+            current.RoleId = update.RoleId;
+            current.ResourceId = update.ResourceId;
 
             return current;
         }
 
-        public override RoleResourceAccess[] SaveChanges(RoleResourceAccess[] entity)
+        public override RoleResourceAccess[] JoinAllAndSort(RoleResourceAccess[] entities)
         {
-            entity = (
+            return (
                 from e in this.FindAll().ToList()
-                join p in entity on e.Id equals p.Id.Value
-                select p
-            ).ToArray();
-
-            dbContext.RoleResourcesAccesses.AttachRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
+                join c in entities on e.Id equals c.Id
+                select c
+            ).OrderBy(c => c.Id).ToArray();
         }
 
         public override RoleResourceAccess[] Delete(RoleResourceAccess[] entity)
         {
-            entity = (
-                from e in this.FindAll().ToList()
-                join p in entity on e.Id equals p.Id.Value
-                select p
-            ).ToArray();
+            entity = this.JoinAllAndSort(entity);
 
             foreach (RoleResourceAccess dbEntity in entity)
             {

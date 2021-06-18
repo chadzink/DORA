@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Linq.Expressions;
 using DORA.Access.Context.Entities;
 using DORA.Access.Common;
 using Microsoft.Extensions.Configuration;
@@ -76,6 +75,11 @@ namespace DORA.Access.Context.Repositories
                    select s;
         }
 
+        public override User Find(Guid id)
+        {
+            return this.FindOneBy(e => e.Id == id);
+        }
+
         public override IQueryable<User> FindAllWithIncludes(string[] collectionNames)
         {
             IQueryable<User> query = this.FindAll();
@@ -86,104 +90,36 @@ namespace DORA.Access.Context.Repositories
             return query;
         }
 
-        public override User Find(Guid id)
+        public override User CopyEntity(User current, User updates)
         {
-            return this.FindOneBy(e => e.Id == id);
-        }
-
-        public override User FindOneBy(Expression<Func<User, bool>> criteria)
-        {
-            return (from r in dbContext.Users select r).Where(criteria).FirstOrDefault();
-        }
-
-        public override IQueryable<User> FindBy(Expression<Func<User, bool>> criteria)
-        {
-            IQueryable<User> query = FindAll();
-
-            return base.FindBy(query, criteria);
-        }
-
-        public override User[] Create(User[] entity)
-        {
-            foreach (User e in entity)
-            {
-                if (!e.Id.HasValue)
-                    e.Id = Guid.NewGuid();
-
-                e.LastUpdatedStamp = DateTime.Now;
-                e.CreatedStamp = DateTime.Now;
-            }
-
-            dbContext.Users.AddRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
-        }
-
-        public override User[] Update(User[] current, User[] previous)
-        {
-            if (current.Length != previous.Length)
-                return null;
-
-            // filter & sort out entities that the user doe not have access to
-            current = (
-                from e in this.FindAll().ToList()
-                join c in current on e.Id equals c.Id.Value
-                select c
-            ).OrderBy(c => c.Id).ToArray();
-
-            // filter and sort
-            previous = (
-                from c in current
-                join p in previous on c.Id.Value equals p.Id.Value
-                select p
-            ).OrderBy(c => c.Id).ToArray();
-
-            for (int e = 0; e < current.Length; e++)
-            {
-                current[e].UserName = previous[e].UserName;
-                current[e].DisplayName = previous[e].DisplayName;
-                current[e].FirstName = previous[e].FirstName;
-                current[e].LastName = previous[e].LastName;
-                current[e].Email = previous[e].Email;
-                current[e].Phone = previous[e].Phone;
-                current[e].FirstLoginStamp = previous[e].FirstLoginStamp;
-                current[e].LastLoginStamp = previous[e].LastLoginStamp;
-                current[e].ExternalId = previous[e].ExternalId;
-                // cannot set the user password in common create, need to use special AssignUserPassword above
-                current[e].enabled = previous[e].enabled;
-                current[e].LastUpdatedStamp = DateTime.Now;
-            }
-
-            dbContext.Users.AttachRange(current);
-            dbContext.SaveChanges();
+            current.UserName = updates.UserName;
+            current.DisplayName = updates.DisplayName;
+            current.FirstName = updates.FirstName;
+            current.LastName = updates.LastName;
+            current.Email = updates.Email;
+            current.Phone = updates.Phone;
+            current.FirstLoginStamp = updates.FirstLoginStamp;
+            current.LastLoginStamp = updates.LastLoginStamp;
+            current.ExternalId = updates.ExternalId;
+            // cannot set the user password in common create, need to use special AssignUserPassword above
+            current.enabled = updates.enabled;
+            current.LastUpdatedStamp = DateTime.Now;
 
             return current;
         }
 
-        public override User[] SaveChanges(User[] entity)
+        public override User[] JoinAllAndSort(User[] entities)
         {
-            entity = (
+            return (
                 from e in this.FindAll().ToList()
-                join p in entity on e.Id equals p.Id.Value
-                // cannot change the user password, must be the same
-                where e.CurrentUserPasswordId == p.CurrentUserPasswordId
-                select p
-            ).ToArray();
-
-            dbContext.Users.AttachRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
+                join c in entities on e.Id equals c.Id
+                select c
+            ).OrderBy(c => c.Id).ToArray();
         }
 
         public override User[] Delete(User[] entity)
         {
-            entity = (
-                from e in this.FindAll().ToList()
-                join p in entity on e.Id equals p.Id.Value
-                select p
-            ).ToArray();
+            entity = this.JoinAllAndSort(entity);
 
             foreach (User dbEntity in entity)
             {

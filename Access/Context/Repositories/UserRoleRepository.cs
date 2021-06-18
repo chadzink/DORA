@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Linq.Expressions;
 using DORA.Access.Context.Entities;
 using DORA.Access.Common;
 using Microsoft.Extensions.Configuration;
@@ -35,6 +34,11 @@ namespace DORA.Access.Context.Repositories
                    select s;
         }
 
+        public override UserRole Find(Guid id)
+        {
+            return this.FindOneBy(e => e.Id == id);
+        }
+
         public override IQueryable<UserRole> FindAllWithIncludes(string[] collectionNames)
         {
             IQueryable<UserRole> query = this.FindAll();
@@ -45,89 +49,26 @@ namespace DORA.Access.Context.Repositories
             return query;
         }
 
-        public override UserRole Find(Guid id)
+        public override UserRole CopyEntity(UserRole current, UserRole updates)
         {
-            return this.FindOneBy(e => e.Id == id);
-        }
-
-        public override UserRole FindOneBy(Expression<Func<UserRole, bool>> criteria)
-        {
-            return dbContext.UserRoles.FirstOrDefault(criteria);
-        }
-
-        public override IQueryable<UserRole> FindBy(Expression<Func<UserRole, bool>> criteria)
-        {
-            IQueryable<UserRole> query = FindAll();
-
-            return base.FindBy(query, criteria);
-        }
-
-        public override UserRole[] Create(UserRole[] entity)
-        {
-            foreach (UserRole e in entity)
-            {
-                if (!e.Id.HasValue)
-                    e.Id = Guid.NewGuid();
-            }
-
-            dbContext.UserRoles.AddRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
-        }
-
-        public override UserRole[] Update(UserRole[] current, UserRole[] previous)
-        {
-            if (current.Length != previous.Length)
-                return null;
-
-            // filter & sort out entities that the user doe not have access to
-            current = (
-                from e in this.FindAll().ToList()
-                join c in current on e.Id equals c.Id.Value
-                select c
-            ).OrderBy(c => c.Id).ToArray();
-
-            // filter and sort
-            previous = (
-                from c in current
-                join p in previous on c.Id.Value equals p.Id.Value
-                select p
-            ).OrderBy(c => c.Id).ToArray();
-
-            for (int e = 0; e < current.Length; e++)
-            {
-                current[e].RoleId = previous[e].RoleId;
-                current[e].UserId = previous[e].UserId;
-            }
-
-            dbContext.UserRoles.AttachRange(current);
-            dbContext.SaveChanges();
+            current.RoleId = updates.RoleId;
+            current.UserId = updates.UserId;
 
             return current;
         }
 
-        public override UserRole[] SaveChanges(UserRole[] entity)
+        public override UserRole[] JoinAllAndSort(UserRole[] entities)
         {
-            entity = (
+            return (
                 from e in this.FindAll().ToList()
-                join p in entity on e.Id equals p.Id.Value
-                select p
-            ).ToArray();
-
-            dbContext.UserRoles.AttachRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
+                join c in entities on e.Id equals c.Id
+                select c
+            ).OrderBy(c => c.Id).ToArray();
         }
 
         public override UserRole[] Delete(UserRole[] entity)
         {
-            entity = (
-                from e in this.FindAll().ToList()
-                join p in entity on e.Id equals p.Id.Value
-                select p
-            ).ToArray();
+            entity = this.JoinAllAndSort(entity);
 
             foreach (UserRole dbEntity in entity)
             {

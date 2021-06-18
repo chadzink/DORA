@@ -105,11 +105,14 @@ namespace Access.Controllers
                     foreach (Role role in onlyUserRoles)
                     {
                         // now we know what user and what roles the user wants comapred to what roles the logged in user has access to
-                        userRoleRepository.Create(new UserRole() {
+                        UserRole ur = userRoleRepository.Create(new UserRole() {
                             Id = Guid.NewGuid(),
                             UserId = user.Id.Value,
                             RoleId = role.Id.Value,
                         });
+
+                        ur.Role = role;
+                        user.UserRoles.Add(ur);
                     }
                 }
             }
@@ -202,7 +205,7 @@ namespace Access.Controllers
         /// <response code="200">JSON object with user with updated JWT and refresh tokens.</response>
         /// <response code="308">Redirect to Save Token URL in JWT Client Record with token and refreshToken querystring params.</response>
         /// <response code="400">JSON object with success = false and message containing error type.</response>
-        [AllowAnonymous, HttpGet("request-rest")]
+        [AllowAnonymous, HttpGet("request-reset")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status308PermanentRedirect)]
@@ -297,7 +300,7 @@ namespace Access.Controllers
             }
 
             // Finished
-            JsonData<User> JsonObj = new JsonData<User>(user, user.JwtToken, user.RefreshJwtToken, true, "Message Sent");
+            JsonData<string> JsonObj = new JsonData<string>("Message Sent");
             return Ok(JsonObj.Serialize());
         }
 
@@ -310,7 +313,7 @@ namespace Access.Controllers
         /// <response code="200">JSON object with user with updated JWT and refresh tokens.</response>
         /// <response code="308">Redirect to Save Token URL in JWT Client Record with token and refreshToken querystring params.</response>
         /// <response code="400">JSON object with success = false and message containing error type.</response>
-        [AllowAnonymous, HttpGet("resolve-rest")]
+        [AllowAnonymous, HttpPost("resolve-reset")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status308PermanentRedirect)]
@@ -415,7 +418,10 @@ namespace Access.Controllers
                 return NotFound(JsonErr.Serialize());
             }
 
-            User user = _userRepository.FindOneBy(r => r.UserName == username);
+            User user = _userRepository
+                .FindAllWithIncludes(new string[] { "UserRoles.Role" })
+                .Where(r => r.UserName == username)
+                .FirstOrDefault(r => r.UserName == username);
 
             if (user == null)
             {

@@ -173,6 +173,10 @@ namespace DORA.Access.Helpers
                     case FilterFieldType.Guid:
 
                         target = Expression.Constant(Guid.Parse((String)this.FieldValue));
+
+                        if (memProperty.Type == typeof(Guid?))
+                            memProperty = Expression.Property(Expression.Property(parameter, propertyName), "Value");
+
                         inputType = typeof(Guid);
                         break;
                 }
@@ -182,7 +186,11 @@ namespace DORA.Access.Helpers
                 {
                     case "eq":
                     case "=":
-                        expMethod = Expression.Equal(memProperty, target);
+                        if (this.FieldType == FilterFieldType.Guid)
+                            expMethod = Expression.Call(memProperty, inputType.GetMethod("Equals", new Type[] { inputType }), target);
+                        else
+                            expMethod = Expression.Equal(memProperty, target);
+
                         break;
 
                     case "neq":

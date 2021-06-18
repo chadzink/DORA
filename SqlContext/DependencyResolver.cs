@@ -9,6 +9,8 @@ namespace DORA.SqlContext
     {
         public IServiceProvider ServiceProvider { get; }
         public string CurrentDirectory { get; set; }
+        public string TargetAssembly { get; set; }
+        public string ConnectionStringsKey { get; set; }
 
         public DependencyResolver()
         {
@@ -34,16 +36,12 @@ namespace DORA.SqlContext
                 IConfigurationService configService = provider.GetService<IConfigurationService>();
                 IConfiguration configuration = configService.GetConfiguration();
 
-                string connectionString = configuration.GetConnectionString("BaseConnection");
+                string connectionString = configuration.GetConnectionString(ConnectionStringsKey);
                 DbContextOptionsBuilder<BaseContext> optionsBuilder = new DbContextOptionsBuilder<BaseContext>();
-
-                string targetAssembly = "SqlContext";
-                if (configuration["Migrations:SqlTargetMigrationsAssembly"] != null)
-                    targetAssembly = configuration["Migrations:SqlTargetMigrationsAssembly"];
 
                 optionsBuilder.UseSqlServer(
                     connectionString,
-                    builder => builder.MigrationsAssembly(targetAssembly)
+                    builder => builder.MigrationsAssembly(TargetAssembly)
                 );
 
                 return new BaseContext(optionsBuilder.Options);

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Linq.Expressions;
 using DORA.Access.Context.Entities;
 using DORA.Access.Common;
 using Microsoft.Extensions.Configuration;
@@ -29,6 +28,13 @@ namespace DORA.Access.Context.Repositories
                 return null;
         }
 
+        public override Role Find(Guid id)
+        {
+            return (from e in this.FindAll()
+                    where e.Id == id
+                    select e).FirstOrDefault();
+        }
+
         public override IQueryable<Role> FindAllWithIncludes(string[] collectionNames)
         {
             IQueryable<Role> query = this.FindAll();
@@ -39,32 +45,21 @@ namespace DORA.Access.Context.Repositories
             return query;
         }
 
-        public override Role Find(Guid id)
+        public override Role CopyEntity(Role current, Role update)
         {
-            return (from e in this.FindAll()
-                    where e.Id == id
-                    select e).FirstOrDefault();
+            current.Label = update.Label;
+            current.KeyCode = update.KeyCode;
+
+            return current;
         }
 
-        public override Role FindOneBy(Expression<Func<Role, bool>> criteria)
+        public override Role[] JoinAllAndSort(Role[] entities)
         {
-            User currentUser = this.CurrentUser();
-
-            if (currentUser != null)
-                return (from j in dbContext.UserRoles
-                        join r in dbContext.Roles
-                        on j.RoleId equals r.Id
-                        where j.UserId == currentUser.Id
-                        select r).FirstOrDefault(criteria);
-            else
-                return null;
-        }
-
-        public override IQueryable<Role> FindBy(Expression<Func<Role, bool>> criteria)
-        {
-            IQueryable<Role> query = FindAll();
-
-            return base.FindBy(query, criteria);
+            return (
+                from e in this.FindAll().ToList()
+                join c in entities on e.Id equals c.Id
+                select c
+            ).OrderBy(c => c.Id).ToArray();
         }
 
         public override Role[] Create(Role[] entity)
@@ -96,59 +91,9 @@ namespace DORA.Access.Context.Repositories
             return entity;
         }
 
-        public override Role[] Update(Role[] current, Role[] previous)
-        {
-            if (current.Length != previous.Length)
-                return null;
-
-            // filter & sort out entities that the user doe not have access to
-            current = (
-                from e in this.FindAll().ToList()
-                join c in current on e.Id equals c.Id.Value
-                select c
-            ).OrderBy(c => c.Id).ToArray();
-
-            // filter and sort
-            previous = (
-                from c in current
-                join p in previous on c.Id.Value equals p.Id.Value
-                select p
-            ).OrderBy(c => c.Id).ToArray();
-
-
-            for (int e = 0; e < current.Length; e++)
-            {
-                current[e].Label = previous[e].Label;
-                current[e].KeyCode = previous[e].KeyCode;
-            }
-
-            dbContext.Roles.AttachRange(current);
-            dbContext.SaveChanges();
-
-            return current;
-        }
-
-        public override Role[] SaveChanges(Role[] entity)
-        {
-            entity = (
-                from e in this.FindAll().ToList()
-                join p in entity on e.Id equals p.Id.Value
-                select p
-            ).ToArray();
-
-            dbContext.Roles.AttachRange(entity);
-            dbContext.SaveChanges();
-
-            return entity;
-        }
-
         public override Role[] Delete(Role[] entity)
         {
-            entity = (
-                from e in this.FindAll().ToList()
-                join p in entity on e.Id equals p.Id.Value
-                select p
-            ).ToArray();
+            entity = this.JoinAllAndSort(entity);
 
             foreach (Role dbEntity in entity)
             {

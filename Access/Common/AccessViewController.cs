@@ -128,8 +128,8 @@ namespace DORA.Access.Common
             [FromQuery] List<string> includes = null,
             [FromQuery] int page = 1,
             [FromQuery] int size = 25,
-            [FromQuery] string order_by = null,
-            [FromQuery] string order_dir = "ASC"
+            [FromQuery] string orderBy = null,
+            [FromQuery] string orderDir = "ASC"
             )
         {
             // check READ role access to this resource
@@ -146,8 +146,8 @@ namespace DORA.Access.Common
             User user = this.IncludeUser ? DataRepository.CurrentUser() : null;
 
             JsonData<TEntity> jsonResult = this.IncludeUser
-                ? FilterResult<TEntity>.ToJson(query, user, filters, includes, page, size, order_by, order_dir)
-                : FilterResult<TEntity>.ToJson(query, filters, includes, page, size, order_by, order_dir);
+                ? FilterResult<TEntity>.ToJson(query, user, filters, includes, page, size, orderBy, orderDir)
+                : FilterResult<TEntity>.ToJson(query, filters, includes, page, size, orderBy, orderDir);
 
             return Ok(jsonResult.Serialize());
         }
